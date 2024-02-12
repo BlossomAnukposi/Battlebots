@@ -13,4 +13,4 @@
 ## The Sub-groups
 - Purpie:             Cristian Trifan / Jia Men Lam
 - Sir RAMAV:          Blossom Anukposi / Peter Zlamala
-- SHITTER:            Quentin Hamelet / Timofei Gerasimov
+- Weway Wacer:            Quentin Hamelet / Timofei Gerasimov
