@@ -7,11 +7,11 @@ const int servoPin = 12;
 Servo gripperServo;
 
 // Define gripper positions
-const int closedPosition = 0; // Adjust as needed
+const int closedPosition = 60; // Adjust as needed
 const int openPosition = 120; // Adjust as needed
 
 // Define ultrasonic sensor pins
-const int trigPin = 2; // Trig pin of ultrasonic sensor
+const int trigPin = 4; // Trig pin of ultrasonic sensor
 const int echoPin = 3; // Echo pin of ultrasonic sensor
 
 // Define variables for gripper state
@@ -39,21 +39,23 @@ void loop() {
 
   // Measure the echo time to determine distance
   long duration = pulseIn(echoPin, HIGH);
-  int distance = duration * 0.034 / 2;
+  int distance = duration * 0.034 / 1.5;
 
   // If an object is within range, close the gripper
-  if (distance < 10 && gripperOpen) {
+  if (distance < 4 && gripperOpen) {
     gripperServo.write(closedPosition);
     gripperOpen = false;
-    delay(1000); // Adjust delay as needed to ensure stable gripping
+    // Adjust delay as needed to ensure stable gripping
+    delay(500);
   }
   // If no object is detected, open the gripper
-  else if (distance >= 10 && !gripperOpen) {
+  else if (distance >= 9 && !gripperOpen) {
     gripperServo.write(openPosition);
     gripperOpen = true;
-    delay(1000); // Adjust delay as needed to ensure stable release
+    // Adjust delay as needed to ensure stable release
+    delay(500);
   }
 
   // Optional: Add a small delay to reduce loop frequency
-  delay(100);
+  // delay(100);
 }
