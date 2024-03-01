@@ -5,9 +5,9 @@
 - Blossom Anukposi    / Group Leader
 - Quentin Hamelet     / Co-Group Leader
 - Cristian Trifan     / Sectretary
-- Timofei Gerasimov   / Quality Control
-- Peter Zlamala       / 
-- Jia Men Lam         / 
+- Timofei Gerasimov   / Quality Control - Code
+- Peter Zlamala       / Quality Control - Documentation
+- Jia Men Lam         / Group Member :)
 
 
 ## The Sub-groups
