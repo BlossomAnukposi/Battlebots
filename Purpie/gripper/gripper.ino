@@ -12,7 +12,7 @@ const int openPosition = 120; // Adjust as needed
 
 // Define ultrasonic sensor pins
 const int trigPin = 4; // Trig pin of ultrasonic sensor
-const int echoPin = 3; // Echo pin of ultrasonic sensor
+const int echoPin = 9; // Echo pin of ultrasonic sensor
 
 // Define variables for gripper state
 bool gripperOpen = true;
