@@ -1,7 +1,25 @@
-const int leftB = 10; //motor left - going backwards
-const int leftF = 11; // motor left - going forward
-const int rightB = 5; //motor right - going backwards
-const int rightF = 6; //motor right - going forward
+// ============= LIBRARIES ===============//
+#include <Adafruit_NeoPixel.h>
+
+// neo lights
+#define NEOPIN_NO 7
+#define NEOPIN_NI 8
+#define NEO_PIXNUMBER 4
+#define BRIGHTNESS_LEVEL 35
+
+// signal colors
+#define WHITE           255, 255, 255
+#define RED               0, 255,   0
+#define GREEN           255,   0,   0
+#define LIGHT_GREEN     155, 255,   0
+#define BLUE              0,   0, 255
+#define YELLOW          255, 255,   0
+
+// motor
+#define MOTOR_LEFT_B 10
+#define MOTOR_LEFT_F 11
+#define MOTOR_RIGHT_B 5
+#define MOTOR_RIGHT_F 6
 
 int rightSensors;
 int leftSensors;
@@ -20,6 +38,10 @@ int leftValue = 0;
 int rightValue = 0;
 int adjustSpeed = 0;
 
+
+Adafruit_NeoPixel strip_NO(NEO_PIXNUMBER, NEOPIN_NO, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel strip_NI(NEO_PIXNUMBER, NEOPIN_NI, NEO_GRB + NEO_KHZ800);
+
 //===============================
 //*SETUP*************
 //===============================
@@ -28,42 +50,84 @@ int adjustSpeed = 0;
 //===============================
 //*FUNCTIONS***********
 //===============================
-void goForward() {
-  analogWrite(leftF, 255);
-  analogWrite(rightF, 240);
+void moveBackward(){
+    analogWrite(MOTOR_LEFT_B, 255);
+    analogWrite(MOTOR_RIGHT_B, 255);
 }
 
-void left(){
-  analogWrite(leftF, 255);
-  analogWrite(rightF, 180);
+
+
+void moveForward(){
+    analogWrite(MOTOR_LEFT_F, 255);
+    analogWrite(MOTOR_RIGHT_F, 240);
 }
 
-void right(){
-  analogWrite(leftF, 180);
-  analogWrite(rightF, 255);
+void turnLeft(){
+    analogWrite(MOTOR_LEFT_F, 255);
+    analogWrite(MOTOR_RIGHT_F, 230);
 }
 
-void followLine(){
-  readSensors();
-  if(IR3 > 500 && IR4 > 500){
-    analogWrite(leftF, 255);
-    analogWrite(rightF, 120);
-  }else if(IR5 > 500 && IR6 > 500){
-    analogWrite(leftF, 120);
-    analogWrite(rightF, 255);
-  }else if(IR2 > 500 && IR3 > 500){
-    analogWrite(leftF, 255);
-    analogWrite(rightF, 0);
-  }else if(IR6 > 500 && IR7 > 500){
-    analogWrite(leftF, 0);
-    analogWrite(rightF, 255);
-  }else if(IR2 > 500 && IR1 > 500){
-    analogWrite(leftF, 255);
-    analogWrite(rightF, 0);
-  }else if(IR7 > 500 && IR8 > 500){
-    analogWrite(leftF, 0);
-    analogWrite(rightF, 255);
-  }
+
+void turnRight(){
+    analogWrite(MOTOR_LEFT_F, 180);
+    analogWrite(MOTOR_RIGHT_F, 255);
+}
+
+void followLine() {
+    readSensors();
+    // Turn off all LEDs initially
+    strip_NI.setPixelColor(2, strip_NI.Color(0, 0, 0)); // Turn off left LED
+    strip_NI.setPixelColor(3, strip_NI.Color(0, 0, 0)); // Turn off right LED
+    strip_NI.show(); // Show the changes
+
+    if(IR3 > 500 && IR4 > 500) {
+        analogWrite(MOTOR_LEFT_F, 255);
+        analogWrite(MOTOR_RIGHT_F, 120);
+        signalGreenForwardLeft(strip_NI);
+        strip_NI.setBrightness(BRIGHTNESS_LEVEL);
+        strip_NI.show();
+        delay(200);
+        
+    } else if(IR5 > 500 && IR6 > 500) {
+        analogWrite(MOTOR_LEFT_F, 120);
+        analogWrite(MOTOR_RIGHT_F, 255);
+        signalGreenForwardRight(strip_NI);
+         strip_NI.setBrightness(BRIGHTNESS_LEVEL);
+        strip_NI.show();
+        delay(200);
+        
+    } else if(IR2 > 500 && IR3 > 500) {
+        analogWrite(MOTOR_LEFT_F, 255); 
+        analogWrite(MOTOR_RIGHT_F, 0);
+        signalGreenForwardLeft(strip_NI);
+         strip_NI.setBrightness(BRIGHTNESS_LEVEL);
+        strip_NI.show();
+        delay(200);
+        
+    } else if(IR6 > 500 && IR7 > 500) {
+        analogWrite(MOTOR_LEFT_F, 0);
+        analogWrite(MOTOR_RIGHT_F, 255);
+        signalGreenForwardRight(strip_NI);
+         strip_NI.setBrightness(BRIGHTNESS_LEVEL);
+        strip_NI.show();
+        delay(200);
+        
+    } else if(IR2 > 500 && IR1 > 500) {
+        analogWrite(MOTOR_LEFT_F, 255);
+        analogWrite(MOTOR_RIGHT_F, 0);
+        signalGreenForwardLeft(strip_NI);
+         strip_NI.setBrightness(BRIGHTNESS_LEVEL);
+        strip_NI.show();
+        delay(200);
+        
+    } else if(IR7 > 500 && IR8 > 500) {
+        analogWrite(MOTOR_LEFT_F, 0);
+        analogWrite(MOTOR_RIGHT_F, 255);
+        signalGreenForwardRight(strip_NI);
+         strip_NI.setBrightness(BRIGHTNESS_LEVEL);
+        strip_NI.show();
+        delay(200);
+    }
 }
 
 bool squareDetected(){
@@ -72,12 +136,11 @@ bool squareDetected(){
   }
 }
 
-void setupMotors(){
-  //initializing motor pins
-  pinMode(leftB, OUTPUT);
-  pinMode(leftF, OUTPUT);
-  pinMode(rightB, OUTPUT);
-  pinMode(rightF, OUTPUT);
+void setupMotors() {
+    pinMode(MOTOR_LEFT_B, OUTPUT);
+    pinMode(MOTOR_LEFT_F, OUTPUT);
+    pinMode(MOTOR_RIGHT_B, OUTPUT);
+    pinMode(MOTOR_RIGHT_F, OUTPUT);
 }
 
 void setupIRSensors(){
@@ -101,7 +164,19 @@ void readSensors(){
   IR7 = analogRead(A6);
   IR8 = analogRead(A7);
 }
+
+
+void signalGreenForwardLeft(Adafruit_NeoPixel &strip) {
+    strip.setPixelColor(2, strip.Color(GREEN));
+}
+
+void signalGreenForwardRight(Adafruit_NeoPixel &strip) {
+    strip.setPixelColor(3, strip.Color(GREEN));
+}
+
 void setup(){
+  strip_NO.begin();
+  strip_NI.begin();
   Serial.begin(9600); // Initializes the serial communication
   setupIRSensors();
   setupMotors();

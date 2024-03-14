@@ -45,7 +45,9 @@ int adjustSpeed = 0;
 // ==========[ SETUP ]=====================
 
 void setup() {
+    // Set the servo pin as an output
     pinMode(servoPin, OUTPUT);
+    // Initialize motors and sensors
     setupMotors();
     setupIRSensors();
 }
@@ -54,15 +56,21 @@ void setup() {
 
 void loop() {
     followLine();
+    
+    // Trigger the ultrasonic sensor
     digitalWrite(trigPin, LOW);
     delayMicroseconds(2);
     digitalWrite(trigPin, HIGH);
     delayMicroseconds(10);
     digitalWrite(trigPin, LOW);
+
+    // Open the grip (90 degrees)
     setServoAngle(90);
-    delay(2000); 
+    delay(2000); // Wait for 2 seconds
+
+    // Close the grip (60 degrees)
     setServoAngle(60);
-    delay(1000); 
+    delay(1000); // Wait for 1 second
 }
 
 // ==========[ FUNCTIONS ]=====================
@@ -147,7 +155,10 @@ void readSensors() {
 }
 
 void setServoAngle(int angle) {
-    int pulseWidth = map(angle, 0, 180, 1000, 2000);
+    // Convert angle to pulse width
+    int pulseWidth = map(angle, 0, 180, 1000, 2000); 
+
+    // Send the pulse to the servo pin
     digitalWrite(servoPin, HIGH);
     delayMicroseconds(pulseWidth);
     digitalWrite(servoPin, LOW);
