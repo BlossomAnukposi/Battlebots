@@ -38,7 +38,15 @@ long measurementsRight[NUM_MEASUREMENTS] = {0};
 #define rightWheelSensor 2
 int leftRotationCount =  0;
 int rightRotationCount = 0;
-
+int prevLeftRotationCount = leftRotationCount;
+int prevRightRotationCount = rightRotationCount;
+// Declare an enum for the states
+enum RobotState {
+    Moving,
+    Stopped,
+    BackingUp
+};
+RobotState robotState = Moving;
 
 //setup
 void setup(){
@@ -67,17 +75,35 @@ void loop()
     long distanceRight = measureDistance(1); // 1 for right sensor
     long averageFront = averageDistanceFront();
     long averageRight = averageDistanceRight();
+    Serial.println(averageRight);
     if (averageFront <= 30) {
         // An object is detected within 30 cm on average.
         stopMotors();
+        if (averageFront <= 4)
+        {
+            backwards();
+            delay(400);
+            stopMotors();
+        }
     } else {
         forward();
     }
 
-    if (averageRight <= 8)
+    if (averageRight <= 10)
     {
-      fixLeft();
+        fixLeft();
     }
+    else if (averageRight >= 30)
+    {
+        stopMotors();
+        right();
+        delay(500); // Reduce the delay here
+    }
+    else
+    {
+        forward();
+    }
+    avoidStuck();
 }
 
 long measureDistance(int sensor) {
@@ -95,7 +121,7 @@ long measureDistance(int sensor) {
 
     // Send a 10 microsecond pulse.
     digitalWrite(triggerPin, HIGH);
-    delay(10);
+    delay(1);
     digitalWrite(triggerPin, LOW);
 
     // Measure the time for the echo.
@@ -113,6 +139,7 @@ long measureDistance(int sensor) {
     return distance;
 }
 
+
 long averageDistanceFront() {
     long sum = 0;
     for (int i = 0; i < NUM_MEASUREMENTS; i++) {
@@ -129,32 +156,51 @@ long averageDistanceRight() {
     return round(static_cast<float>(sum) / NUM_MEASUREMENTS);
 }
 
+void stopMotors(){
+    analogWrite(motorLeftForward,0);
+    analogWrite(motorRightForward,0);
+    analogWrite(motorLeftBackward,0);
+    analogWrite(motorRightBackward,0);
+    // Set robotState to Stopped when stopMotors is called
+    robotState = Stopped;
+}
+
 void forward()
 {
     analogWrite(motorLeftForward,235);
     analogWrite(motorRightForward,255);
+    // Set robotState to Moving when the robot moves
+    robotState = Moving;
 }
 
 void backwards()
 {
     analogWrite(motorLeftBackward, 237);
     analogWrite(motorRightBackward, 255);
+    // Set robotState to Moving when the robot moves
+    robotState = Moving;
 }
+
 void right()
 {
     analogWrite(motorLeftBackward, 237);
     analogWrite(motorRightForward, 255);
     delay(460);
     stopMotors();
+    // Set robotState to Moving when the robot moves
+    robotState = Moving;
+    delay(1000); // Add a delay here
 }
 
 void fixLeft()
 {
     analogWrite(motorLeftForward, 255);
     analogWrite(motorRightForward, 255);
-    delay(1000);
+    delay(100);
     analogWrite(motorLeftForward,235);
     analogWrite(motorRightForward,255);
+    // Set robotState to Moving when the robot moves
+    robotState = Moving;
 }
 
 void left()
@@ -163,15 +209,27 @@ void left()
     analogWrite(motorRightBackward, 255);
     delay(460);
     stopMotors();
+    // Set robotState to Moving when the robot moves
+    robotState = Moving;
 }
 
-void stopMotors(){
-    analogWrite(motorLeftForward,0);
-    analogWrite(motorRightForward,0);
-    analogWrite(motorLeftBackward,0);
-    analogWrite(motorRightBackward,0);
-}
+void avoidStuck()
+{
+    if (leftRotationCount == prevLeftRotationCount && rightRotationCount == prevRightRotationCount && robotState == Moving) {
+        // If rotation count has stopped increasing and the robot is moving, make the robot back up
+        stopMotors();
+//        delay(200);
+        backwards();
+//        delay(1000);
+        stopMotors();
+        // Set robotState to BackingUp when the robot backs up
+        robotState = BackingUp;
+    }
 
+    // Update previous rotation counts
+    prevLeftRotationCount = leftRotationCount;
+    prevRightRotationCount = rightRotationCount;
+}
 void countLeftSensor()
 {
   leftRotationCount++;
