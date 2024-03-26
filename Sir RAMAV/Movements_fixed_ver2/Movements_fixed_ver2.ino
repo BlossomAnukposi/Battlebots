@@ -7,21 +7,71 @@
 #define BLUE            0  , 0  , 255
 #define LIGHT_GREEN     255, 155, 0
 #define YELLOW          255, 255, 0
-#define CALIBRATE       0  , 200, 190
 #define OFF             0  , 0  , 0
 #define NEOPIN_INPUT    7
 #define NEO_PIXNUMBER   4
 
 Adafruit_NeoPixel strip_NI(NEO_PIXNUMBER, NEOPIN_INPUT, NEO_GRB + NEO_KHZ800);
 
+void signalOff()
+{
+    strip_NI.begin();
+    for (int j = 0; j < NEO_PIXNUMBER; j++)
+    {
+        strip_NI.setPixelColor(j, strip_NI.Color(OFF));
+    }
+    strip_NI.show();
+}
+
+void signalForward()
+{
+    strip_NI.begin();
+    for (int j = 0; j < NEO_PIXNUMBER; j++)
+    {
+        strip_NI.setPixelColor(j, strip_NI.Color(GREEN));
+    }
+    strip_NI.show();
+}
+
+void signalTurnAround()
+{
+    strip_NI.begin();
+    for (int j = 0; j < NEO_PIXNUMBER; j++)
+    {
+        strip_NI.setPixelColor(j, strip_NI.Color(WHITE));
+    }
+    strip_NI.show();
+}
+
+void signalLeft()
+{
+    strip_NI.begin();
+    for (int j = 0; j < NEO_PIXNUMBER; j++)
+    {
+        strip_NI.setPixelColor(j, strip_NI.Color(GREEN));
+    }
+    strip_NI.setPixelColor(2, strip_NI.Color(BLUE));
+    strip_NI.show();
+}
+
+void signalRight()
+{
+    strip_NI.begin();
+    for (int j = 0; j < NEO_PIXNUMBER; j++)
+    {
+        strip_NI.setPixelColor(j, strip_NI.Color(GREEN));
+    }
+    strip_NI.setPixelColor(3, strip_NI.Color(BLUE));
+    strip_NI.show();
+}
+
 //=============== ANALOG LINE SENSORS ===============//
-#define AVERAGE       700
+#define AVERAGE       600
 #define SENSORS       8
-int     S[SENSORS] =  {A0, A1, A2, A3, A4, A5, A6, A7};
-bool    chooseLeft =  false;
-bool    calibrated =  false;
-int     IR[SENSORS];
-int     objDistance = 0;
+bool    chooseLeft =  true;
+
+int S[SENSORS] = {A0, A1, A2, A3, A4, A5, A6, A7};
+int IR[SENSORS];
 
 void readSensors()
 {
@@ -31,9 +81,6 @@ void readSensors()
         IR[i] = analogRead(S[i]);
     }
 }
-
-//===================== CALIBRATION =====================//
-
 
 //===================== ROTATION SENSORS =====================//
 #define     ROTOR_RIGHT             2
@@ -77,23 +124,22 @@ void slightRight()
 
 void turnRight() 
 {
-    chooseLeft =  false;
     analogWrite(MOTOR_LEFT_FORWARD, 255);
     analogWrite(MOTOR_RIGHT_FORWARD, 0);
     analogWrite(MOTOR_LEFT_BACKWARD, 0);
     analogWrite(MOTOR_RIGHT_BACKWARD, 255);
-    signalRight();
-    
+    chooseLeft = false;
+    signalLeft();
 }
 
 void turnLeft() 
 {
-    chooseLeft = true;
     analogWrite(MOTOR_LEFT_FORWARD, 0);
     analogWrite(MOTOR_RIGHT_FORWARD, 255);
     analogWrite(MOTOR_LEFT_BACKWARD, 255);
     analogWrite(MOTOR_RIGHT_BACKWARD, 0);
-    signalLeft();
+    chooseLeft = true;
+    signalRight();
 }
 
 void turnAround() 
@@ -113,6 +159,7 @@ void turnAround()
         analogWrite(MOTOR_LEFT_BACKWARD, 0);
         analogWrite(MOTOR_RIGHT_BACKWARD, 255);
     }
+//    signalTurnAround();
 }
 
 void stopMotors() 
@@ -127,33 +174,24 @@ void adjustPath()
 {
     if ((IR[2] > AVERAGE || IR[3] > AVERAGE) && IR[5] < AVERAGE) 
     {
+        Serial.println("slightRight");
         slightRight();
-        
     } 
     
     else if ((IR[5] > AVERAGE || IR[4] > AVERAGE) && IR[2] < AVERAGE) 
     {
+        Serial.println("slightLeft");
         slightLeft();
     } 
 }
 
 void moveForward() 
 {
-    analogWrite(MOTOR_LEFT_FORWARD, 255); //249
+    analogWrite(MOTOR_LEFT_FORWARD, 255);
     analogWrite(MOTOR_RIGHT_FORWARD, 255);
     analogWrite(MOTOR_LEFT_BACKWARD, 0);
     analogWrite(MOTOR_RIGHT_BACKWARD, 0);
     signalForward();
-    
-}
-
-void moveCalibrate() 
-{
-    analogWrite(MOTOR_LEFT_FORWARD, 210);
-    analogWrite(MOTOR_RIGHT_FORWARD, 204);
-    analogWrite(MOTOR_LEFT_BACKWARD, 0);
-    analogWrite(MOTOR_RIGHT_BACKWARD, 0);
-    signalCalibrate();
 }
 
 //===================== GENERIC STUFF =====================//
@@ -163,52 +201,53 @@ void setup()
     pinMode(MOTOR_RIGHT_FORWARD, OUTPUT);
     pinMode(MOTOR_LEFT_BACKWARD, OUTPUT);
     pinMode(MOTOR_RIGHT_BACKWARD, OUTPUT);
-    pinMode(ROTOR_RIGHT, INPUT);
-    pinMode(ROTOR_LEFT, INPUT);
 
     for (int i = 0; i < SENSORS; i++) 
     {
         pinMode(S[i], INPUT);
     }
 
+    attachInterrupt(digitalPinToInterrupt(ROTOR_RIGHT), rightPulse, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(ROTOR_LEFT), leftPulse, CHANGE);
+    
     Serial.begin(9600);
 }
 
 void loop() {
     readSensors();
 
-    if (IR[0] > AVERAGE && IR[1] > AVERAGE && IR[6] > AVERAGE && IR[7] > AVERAGE) 
+    if ((IR[0] > AVERAGE || IR[1] > AVERAGE) && (IR[6] > AVERAGE || IR[7] > AVERAGE)) 
     {
+        Serial.println("Turn Right");
         turnRight();
-        delay(150);
     }
-    
+
+    else if (IR[6] > AVERAGE || IR[7] > AVERAGE) 
+    {
+        Serial.println("Left Turn");
+        turnLeft();
+    } 
+
     else if (IR[0] > AVERAGE || IR[1] > AVERAGE) 
     {
+        Serial.println("Right Turn");
         turnRight();
-        delay(150);
     }
     
-    else if ((IR[1] < AVERAGE) && (IR[3] > AVERAGE || IR[4] > AVERAGE) && (IR[6] < AVERAGE)) 
-    {
-        moveForward();
-        adjustPath();
-    }
-
-    else if ((IR[7] > AVERAGE || IR[6] > AVERAGE) && IR[0] < AVERAGE)
-    {
-        chooseLeft = true;
-        if (IR[0] < AVERAGE && IR[2] < AVERAGE && IR[4] < AVERAGE && IR[6] < AVERAGE)
-        {
-            turnLeft();
-        }
-    }
-
     else if (IR[0] < AVERAGE && IR[1] < AVERAGE && IR[2] < AVERAGE && IR[3] < AVERAGE && IR[4] < AVERAGE && IR[5] < AVERAGE && IR[6] < AVERAGE && IR[7] < AVERAGE) 
     {
+        Serial.println("Turn Around");
         turnAround();
     }
 
-    readSensors();
+    else if (IR[3] > AVERAGE || IR[4] > AVERAGE) 
+    {
+        if ((IR[0] < AVERAGE && IR[1] < AVERAGE) && (IR[6] < AVERAGE && IR[7] < AVERAGE))
+        {
+            Serial.println("Forward");
+            moveForward();
+        }
+    } 
+
     adjustPath();
 }
