@@ -18,18 +18,19 @@ int IR7;
 int IR8;
 
 
-const int maxDistance = 20; // 20 cm maximum distance to leave room for error
+const int maxDistance = 25; // 20 cm maximum distance to leave room for error
 const int startDistance = 15; // 15 cm maximum distance from the flag
 float distance, duration; // declared 2 floats in 1 line for organization purposes
 const int echoInterval = 245;
 
+
 //===============================
-//*SETUP*************
+//SETUP************
 //===============================
 
 
 //===============================
-//*FUNCTIONS***********
+//FUNCTIONS**********
 //===============================
 void setServoAngle(int angle) {
     int pulseWidth = map(angle, 0, 180, 0, 255); 
@@ -45,7 +46,7 @@ void goForward() {
 
 void startForward() {
   analogWrite(leftF, 200);
-  analogWrite(rightF, 185);
+  analogWrite(rightF, 180);
   delay(1500);
   stopMotors();
 }
@@ -59,7 +60,7 @@ void goCheck() {
 
 void left(){
   analogWrite(leftF, 40);
-  analogWrite(rightF, 180);
+  analogWrite(rightF, 200);
   delay(1000); // Adjust delay for how long you want to move forward
   stopMotors();
 }
@@ -73,21 +74,21 @@ void right(){
 void go1Sec() {
   analogWrite(leftF, 200);
   analogWrite(rightF, 180);
-  delay(600);
+  delay(1000);
   stopMotors();
 }
 
 void leftAvoid(){
-  analogWrite(leftF, 100);
-  analogWrite(rightF, 200);
-  delay(1200); // Adjust delay for how long you want to move forward
+  analogWrite(leftF, 40);
+  analogWrite(rightF, 180);
+  delay(1100); // Adjust delay for how long you want to move forward
   stopMotors();
 }
 
 void rightAvoid(){
-  analogWrite(leftF, 200);
-  analogWrite(rightF, 100);
-  delay(1000);
+  analogWrite(leftF, 180);
+  analogWrite(rightF, 40);
+  delay(800);
 }
 
 void moveBackward() {
@@ -108,26 +109,36 @@ void stopMotors() {
 
 void followLine(){
   readSensors();
-  if(IR3 > 500 && IR4 > 500){
+  if(IR3 > 600 && IR4 > 600){
     analogWrite(leftF, 255);
     analogWrite(rightF, 180);
-  }else if(IR5 > 500 && IR6 > 500){
+  }else if(IR5 > 600 && IR6 > 600){
     analogWrite(leftF, 180);
     analogWrite(rightF, 255);
-  }else if(IR2 > 500 && IR3 > 500){
+  }else if(IR2 > 600 && IR3 > 600){
     analogWrite(leftF, 255);
-    analogWrite(rightF, 80);
-  }else if(IR6 > 500 && IR7 > 500){
-    analogWrite(leftF, 80);
+    analogWrite(rightF, 70);
+  }else if(IR6 > 600 && IR7 > 600){
+    analogWrite(leftF, 70);
     analogWrite(rightF, 255);
-  }else if(IR2 > 500 && IR1 > 500){
+  }else if(IR2 > 600 && IR1 > 600){
     analogWrite(leftF, 255);
-    analogWrite(rightF, 40);
-  }else if(IR7 > 500 && IR8 > 500){
-    analogWrite(leftF, 40);
+    analogWrite(rightF, 50);
+  }else if(IR7 > 600 && IR8 > 600){
+    analogWrite(leftF, 50);
     analogWrite(rightF, 255);
   }
 }
+
+void findLine()
+{
+   readSensors();
+   if (IR3 < 600 && IR4 < 600 && IR5 < 600 && IR6 < 600)
+   {
+    analogWrite(leftF, 220);
+    analogWrite(rightF, 200);
+   }
+  }
 
 void distanceReader()
 {
@@ -147,7 +158,6 @@ void distanceSensor(){
 static unsigned long timer;
  if (millis() > timer) 
   {
-
     distanceReader();
 
     if (distance <= maxDistance)
@@ -155,14 +165,8 @@ static unsigned long timer;
         rightAvoid();
         go1Sec();
         leftAvoid();
-        goCheck();
-        stopMotors();   
-      }
-    else
-      {
-        Serial.print(distance);
-        Serial.println(" cm");
-//        followLine();
+        findLine();
+        followLine();  
       }
        timer = millis() + 200;
     }
@@ -194,8 +198,8 @@ void readSensors(){
   IR4 = analogRead(A4);
   IR5 = analogRead(A2);
   IR6 = analogRead(A5);
-  IR7 = analogRead(A6);
-  IR8 = analogRead(A7);
+  IR7 = analogRead(A7);
+  IR8 = analogRead(A6);
 }
 
 void setupDistanceSensor(){
@@ -212,7 +216,7 @@ void setup(){
 }
 
 //===============================
-//*LOOP**************
+//LOOP*************
 //===============================
 
 unsigned long startTime = 0;
@@ -225,17 +229,17 @@ bool onSquare = false; // Flag to track whether the robot is on the square
 
 
 void loop() {
-  unsigned long currentTime = millis(); // Get the current time
-  // If 3 seconds haven't passed yet, move forward
-  if (currentTime - startTime < 150) {
-    startForward();
-   delay(500); // Wait for 2 seconds
+  distanceReader(); // Read distance
+  while (distance < 20 && !pickedUpObject) { // If distance is less than 40
+    distanceReader(); // Read distance
+   delay(500); // Stop the robot
   }
   // After 3 seconds, pick up the object and make a left turn
-  else if (!pickedUpObject) {
+   if (!pickedUpObject) {
+    startForward();
     // Stop the robot   
     // Close the grip (60 degrees)
-    setServoAngle(90);
+    setServoAngle(85);
     delay(1000); // Wait for 1 second
     // Make a left turn
     left();
@@ -248,11 +252,11 @@ void loop() {
       followLine();
       distanceSensor();
       
-if (IR1 > 900 && IR2 > 900 && IR3 > 900 && IR6 > 900 && IR7 > 900 && IR8 > 900) {
+if (IR1 > 800 && IR2 > 800 && IR3 > 800 && IR6 > 800 && IR7 > 800 && IR8 > 800) {
     if (!onSquare) { // If the robot just entered the square
       onSquare = true; // Set the flag to true
       squareStartTime = millis(); // Record the start time
-    } else if (millis() - squareStartTime > 80) { // If the robot has been on the square for more than 2 seconds
+    } else if (millis() - squareStartTime > 75) { // If the robot has been on the square for more than 2 seconds
       stopMotors();
       // Drop the object
       setServoAngle(130); // Assuming this is how you open the grip to drop the object
@@ -263,7 +267,7 @@ if (IR1 > 900 && IR2 > 900 && IR3 > 900 && IR6 > 900 && IR7 > 900 && IR8 > 900) 
   } else {
     // If the robot is not on the square, reset the flag
     onSquare = false;
-  }
+         }
+       }    
     }
- }
 }
