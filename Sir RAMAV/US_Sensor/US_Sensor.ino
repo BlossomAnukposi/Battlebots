@@ -15,26 +15,33 @@
 Adafruit_NeoPixel strip_NI(NEO_PIXNUMBER, NEOPIN_INPUT, NEO_GRB + NEO_KHZ800);
 
 //=============== ANALOG LINE SENSOR SETUP ===============//
-#define AVERAGE       600
-#define SENSORS       8
-bool    chooseLeft =  true;
-
-int S[SENSORS] = {A0, A1, A2, A3, A4, A5, A6, A7};
-int IR[SENSORS];
+#define       AVERAGE           600
+#define       SENSORS           8
+bool          chooseLeft      = false;  //changed 27/03/2024 : 19:25:43 from true. ******{Debug value}******
+int           S[SENSORS]      = {A0, A1, A2, A3, A4, A5, A6, A7};
+int           IR[SENSORS];
+bool          checkSquare     = false;
+bool          raceStarted     = false;
+unsigned long squareStartTime = 0;
 
 //===================== CALIBRATION SETUP =====================//
-bool calibrated = false;
-int white[SENSORS];
-int black[SENSORS];
-int threshold[SENSORS];
-bool whiteSeen = false;
-bool blackSeen = false;
+bool  calibrated =    false;
+int   white[SENSORS];
+int   black[SENSORS];
+int   threshold[SENSORS];
+bool  whiteSeen =     false;
+bool  blackSeen =     false;
 
 //===================== ULTRASONIC SENSOR SETUP =====================//
 #define TRIGGER_PIN   12
 #define ECHO_PIN      4
-long duration;
-int distance;
+long    duration;
+int     distance;
+
+//===================== GRIPPER =====================//
+#define GRIPPER_PIN   11
+#define GRIPPER_OPEN  1600
+#define GRIPPER_CLOSE 950
 
 //===================== MOTORS =====================//
 #define MOTOR_LEFT_FORWARD    6 // connected to A1
@@ -63,15 +70,15 @@ void setup()
         white[i] = 0;
         black[i] = 0;
     }
+
+    pinMode(GRIPPER_PIN, OUTPUT);
+    digitalWrite(GRIPPER_PIN, LOW);
     
     Serial.begin(9600);
 }
 
-void loop() { 
-    distanceReader();
-    Serial.print(distance);
-    Serial.println(" cm");
-
+void loop()
+{
     if (!calibrated)
     {
         stopMotors();
@@ -88,34 +95,33 @@ void loop() {
     {
         readSensors();
         
-        if (IR[0] > AVERAGE && IR[1] > AVERAGE && IR[6] > AVERAGE && IR[7] > AVERAGE) 
+        if (IR[0] > threshold[0] && IR[1] > threshold[1] && IR[6] > threshold[6] && IR[7] > threshold[7]) 
+        {
+            checkBlackBox();
+        }
+        
+        else if (IR[0] > threshold[0] || IR[1] > threshold[1]) 
         {
             turnRight();
             delay(150);
         }
         
-        else if (IR[0] > AVERAGE || IR[1] > AVERAGE) 
-        {
-            turnRight();
-            delay(150);
-        }
-        
-        else if ((IR[1] < AVERAGE) && (IR[3] > AVERAGE || IR[4] > AVERAGE) && (IR[6] < AVERAGE)) 
+        else if ((IR[1] < threshold[1]) && (IR[3] > threshold[3] || IR[4] > threshold[4]) && (IR[6] < threshold[6])) 
         {
             moveForward();
             adjustPath();
         }
     
-        else if ((IR[7] > AVERAGE || IR[6] > AVERAGE) && IR[0] < AVERAGE)
+        else if ((IR[7] > threshold[7] || IR[6] > threshold[6]) && IR[0] < threshold[0])
         {
             chooseLeft = true;
-            if (IR[0] < AVERAGE && IR[2] < AVERAGE && IR[4] < AVERAGE && IR[6] < AVERAGE)
+            if (IR[0] < threshold[0] && IR[2] < threshold[2] && IR[4] < threshold[4] && IR[6] < threshold[6])
             {
                 turnLeft();
             }
         }
     
-        else if (IR[0] < AVERAGE && IR[1] < AVERAGE && IR[2] < AVERAGE && IR[3] < AVERAGE && IR[4] < AVERAGE && IR[5] < AVERAGE && IR[6] < AVERAGE && IR[7] < AVERAGE) 
+        else if (IR[0] < threshold[0] && IR[1] < threshold[1] && IR[2] < threshold[2] && IR[3] < threshold[3] && IR[4] < threshold[4] && IR[5] < threshold[5] && IR[6] < threshold[6] && IR[7] < threshold[7]) 
         {
             turnAround();
         }
@@ -136,6 +142,40 @@ void signalOff()
     strip_NI.show();
 }
 
+void signalStarting()
+{
+    strip_NI.begin();
+    for (int j = 0; j < NEO_PIXNUMBER; j++)
+    {
+        strip_NI.setPixelColor(j, strip_NI.Color(GREEN));
+    }
+    
+    strip_NI.show();
+    delay(150);
+    
+    for (int j = 0; j < NEO_PIXNUMBER; j++)
+    {
+        strip_NI.setPixelColor(j, strip_NI.Color(OFF));
+    }
+    
+    strip_NI.show();
+    delay(150);
+    
+    for (int j = 0; j < NEO_PIXNUMBER; j++)
+    {
+        strip_NI.setPixelColor(j, strip_NI.Color(GREEN));
+    }
+    
+    strip_NI.show();
+    delay(150);
+    
+    for (int j = 0; j < NEO_PIXNUMBER; j++)
+    {
+        strip_NI.setPixelColor(j, strip_NI.Color(OFF));
+    }
+    strip_NI.show();
+}
+
 void signalForward()
 {
     strip_NI.begin();
@@ -146,12 +186,12 @@ void signalForward()
     strip_NI.show();
 }
 
-void signalStop()
+void signalReverse()
 {
     strip_NI.begin();
     for (int j = 0; j < NEO_PIXNUMBER; j++)
     {
-        strip_NI.setPixelColor(j, strip_NI.Color(RED));
+        strip_NI.setPixelColor(j, strip_NI.Color(YELLOW));
     }
     strip_NI.show();
 }
@@ -210,11 +250,13 @@ void readSensors()
 
 void recordWhite()
 {
-    if (white[1] == 0 && white [7] == 0)
+    if (threshold[1] == 0 && white [7] == 0)
     {
         for (int i = 0; i < SENSORS; i++)
         {
             white[i] = IR[i];
+            Serial.print("white: ");
+            Serial.println(white[i]);
         }
     }
 
@@ -224,17 +266,21 @@ void recordWhite()
         {
             int whiteAdded = white[i] + IR[i];
             white[i] = whiteAdded / 2;
+            Serial.print("white: ");
+            Serial.println(white[i]);
         }
     }
 }
 
 void recordBlack()
 {
-    if (black[1] == 0 && black[7] == 0)
+    if (threshold[1] == 0 && threshold[7] == 0)
     {
         for (int i = 0; i < SENSORS; i++)
         {
             black[i] = IR[i];
+            Serial.print("black: ");
+            Serial.println(black[i]);
         }
     }
 
@@ -244,6 +290,8 @@ void recordBlack()
         {
             int blackAdded = black[i] + IR[i];
             black[i] = blackAdded / 2;
+            Serial.print("black: ");
+            Serial.println(black[i]);
         }
     }
 }
@@ -306,22 +354,53 @@ void calibrate()
         {
             recordWhite();
         }
-
-        signalForward();
-        delay(500);
     }
 
-    signalStop();
-    delay(1000);
+    signalStarting();
+    delay(150);
+    
     for (int i = 0; i < SENSORS; i++)
     {
-        threshold[i] = white[i] + black[i] / 2;
+        threshold[i] = (white[i] + black[i]) / 2;
         Serial.print("threshold");
         Serial.println(threshold[i]);
     }
 
     calibrated = true;
     startRace();
+}
+
+void checkBlackBox()
+{
+    if (!checkSquare)
+    {
+        checkSquare = true;
+        squareStartTime = millis();
+    }
+
+    else if (checkSquare && millis() - squareStartTime > 80 && !raceStarted)
+    {
+        stopMotors();
+        delay(200);
+        gripperClose(GRIPPER_CLOSE);
+        checkSquare = false;
+    }
+
+    else if (checkSquare && millis() - squareStartTime > 80 && raceStarted)
+    {
+        stopMotors();
+        delay(200);
+        gripperOpen(GRIPPER_OPEN);
+        reverse();
+        delay(350);
+        checkSquare = false;
+    }
+    
+    else
+    {
+        turnRight();
+        delay(150);
+    }
 }
 
 //===================== ULTRASONIC SENSOR FUNCTION =====================//
@@ -335,6 +414,21 @@ void distanceReader()
     
     duration = pulseIn(ECHO_PIN, HIGH);
     distance = (duration / 2) * 0.0343;
+}
+
+//===================== GRIPPER FUNCTION =====================//
+void gripperOpen(int pulse)
+{
+    digitalWrite(GRIPPER_PIN, HIGH);
+    delayMicroseconds(pulse);
+    digitalWrite(GRIPPER_PIN, LOW);
+}
+
+void gripperClose(int pulse)
+{
+    digitalWrite(GRIPPER_PIN, HIGH);
+    delayMicroseconds(pulse);
+    digitalWrite(GRIPPER_PIN, LOW);
 }
 
 //===================== MOTOR FUNCTIONS =====================//
@@ -391,7 +485,6 @@ void turnAround()
         analogWrite(MOTOR_LEFT_BACKWARD, 0);
         analogWrite(MOTOR_RIGHT_BACKWARD, 255);
     }
-//    signalTurnAround();
 }
 
 void stopMotors() 
@@ -406,13 +499,13 @@ void adjustPath()
 {
     readSensors();
     
-    if ((IR[2] > AVERAGE || IR[3] > AVERAGE) && IR[5] < AVERAGE) 
+    if ((IR[2] > threshold[2] || IR[3] > threshold[3]) && IR[5] < threshold[5]) 
     {
         Serial.println("slightRight");
         slightRight();
     } 
     
-    else if ((IR[5] > AVERAGE || IR[4] > AVERAGE) && IR[2] < AVERAGE) 
+    else if ((IR[5] > threshold[5] || IR[4] > threshold[4]) && IR[2] < threshold[2]) 
     {
         Serial.println("slightLeft");
         slightLeft();
@@ -422,7 +515,7 @@ void adjustPath()
 void moveForward() 
 {
     analogWrite(MOTOR_LEFT_FORWARD, 255);
-    analogWrite(MOTOR_RIGHT_FORWARD, 255);
+    analogWrite(MOTOR_RIGHT_FORWARD, 245);
     analogWrite(MOTOR_LEFT_BACKWARD, 0);
     analogWrite(MOTOR_RIGHT_BACKWARD, 0);
     signalForward();
@@ -431,10 +524,19 @@ void moveForward()
 void moveCalibrate() 
 {
     analogWrite(MOTOR_LEFT_FORWARD, 255);
-    analogWrite(MOTOR_RIGHT_FORWARD, 240);
+    analogWrite(MOTOR_RIGHT_FORWARD, 245);
     analogWrite(MOTOR_LEFT_BACKWARD, 0);
     analogWrite(MOTOR_RIGHT_BACKWARD, 0);
     signalCalibrate();
+}
+
+void reverse() 
+{
+    analogWrite(MOTOR_LEFT_FORWARD, 0);
+    analogWrite(MOTOR_RIGHT_FORWARD, 0);
+    analogWrite(MOTOR_LEFT_BACKWARD, 255);
+    analogWrite(MOTOR_RIGHT_BACKWARD, 245);
+    signalReverse();
 }
 
 void startRace()
