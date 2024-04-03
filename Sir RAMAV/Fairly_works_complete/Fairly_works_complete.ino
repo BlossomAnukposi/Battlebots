@@ -23,6 +23,24 @@ int           IR[SENSORS];
 bool          raceStarted     = false;
 bool          raceEnded       = false;
 
+//===================== ROTATION SENSORS SETUP =====================//
+#define     ROTOR_RIGHT             2
+#define     ROTOR_LEFT              3
+#define     PULSES_PER_90DEG_LEFT   40
+#define     PULSES_PER_90DEG_RIGHT  38
+int         rightCount  =           0;
+int         leftCount   =           0;
+
+void rightPulse()
+{
+    rightCount++;
+}
+
+void leftPulse()
+{
+    leftCount++;
+}
+
 //===================== CALIBRATION SETUP =====================//
 bool  calibrated =    false;
 int   white[SENSORS];
@@ -41,10 +59,10 @@ int     distance;
 #define GRIPPER_PIN   11
 
 //===================== MOTORS =====================//
-#define MOTOR_LEFT_FORWARD    6 // connected to A1
-#define MOTOR_RIGHT_FORWARD   10 // connected to B2
+#define MOTOR_LEFT_FORWARD    9 // connected to A1
+#define MOTOR_RIGHT_FORWARD   6 // connected to B2
 #define MOTOR_LEFT_BACKWARD   5 // connected to A2
-#define MOTOR_RIGHT_BACKWARD  9 // connected to B1
+#define MOTOR_RIGHT_BACKWARD  10 // connected to B1
 
 //===================== GENERIC STUFF =====================//
 void setup() 
@@ -69,6 +87,9 @@ void setup()
     }
 
     setServoAngle(150);
+
+    attachInterrupt(digitalPinToInterrupt(ROTOR_RIGHT), rightPulse, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(ROTOR_LEFT), leftPulse, CHANGE);
     
     Serial.begin(9600);
 }
@@ -92,18 +113,20 @@ void loop()
     {
         readSensors();
 
-        if (IR[0] > threshold[0] && IR[1] > threshold[1] && IR[6] > threshold[6] && IR[7] > threshold[7] && !raceEnded) 
+        if ((IR[0] > threshold[0] || IR[1] > threshold[1]) && (IR[3] > threshold[3] || IR[4] > threshold[4]) && (IR[6] > threshold[6] || IR[7] > threshold[7]) && !raceEnded) 
         {
+            Serial.println("right or black box");
             chooseLeft = false;
             stopMotors();
-            delay(150);
-            moveForward();
-            delay(300);
+            delay(1000);
+            moveInterrupt();
             checkBlackBox();
         }
         
-        else if ((IR[0] > threshold[0] || IR[1] > threshold[1]) && !raceEnded) 
+        else if ((IR[0] > threshold[0] || IR[1] > threshold[1]) && (IR[6] < threshold[6] || IR[7] < threshold[7]) && !raceEnded)
         {
+            Serial.println("right or black box skipped");
+            chooseLeft = false;
             turnRight();
             delay(170);
         }
@@ -390,18 +413,23 @@ void checkBlackBox()
 {
     readSensors();
     
-    if (IR[0] > threshold[0] && IR[1] > threshold[1] && IR[6] > threshold[6] && IR[7] > threshold[7]) 
+    if ((IR[0] > threshold[0] || IR[1] > threshold[1]) && (IR[3] > threshold[3] || IR[4] > threshold[4]) && (IR[6] > threshold[6] || IR[7] > threshold[7])) 
     {
         setServoAngle(150);
-        reverse();
-        delay(600);
+        
+        while (leftCount < 10 || rightCount < 10)
+        {
+            reverse();
+        }
+        
         endRace();
+        Serial.println("black box");
     }
     
     else
     {
+        Serial.println("right");
         turnAround();
-//        delay(160);
     }
 }
 
@@ -428,16 +456,16 @@ void setServoAngle(int angle)
 //===================== MOTOR FUNCTIONS =====================//
 void slightLeft() 
 {
-    analogWrite(MOTOR_LEFT_FORWARD, 240);
-    analogWrite(MOTOR_RIGHT_FORWARD, 255);
+    analogWrite(MOTOR_LEFT_FORWARD, 230);
+    analogWrite(MOTOR_RIGHT_FORWARD, 250);
     analogWrite(MOTOR_LEFT_BACKWARD, 0);
     analogWrite(MOTOR_RIGHT_BACKWARD, 0);
 }
 
 void slightRight() 
 {
-    analogWrite(MOTOR_LEFT_FORWARD, 255);
-    analogWrite(MOTOR_RIGHT_FORWARD, 225);
+    analogWrite(MOTOR_LEFT_FORWARD, 230);
+    analogWrite(MOTOR_RIGHT_FORWARD, 220);
     analogWrite(MOTOR_LEFT_BACKWARD, 0);
     analogWrite(MOTOR_RIGHT_BACKWARD, 0);
 }
@@ -506,8 +534,8 @@ void adjustPath()
 
 void moveForward() 
 {
-    analogWrite(MOTOR_LEFT_FORWARD, 255);
-    analogWrite(MOTOR_RIGHT_FORWARD, 245);
+    analogWrite(MOTOR_LEFT_FORWARD, 230);
+    analogWrite(MOTOR_RIGHT_FORWARD, 226);
     analogWrite(MOTOR_LEFT_BACKWARD, 0);
     analogWrite(MOTOR_RIGHT_BACKWARD, 0);
     signalForward();
@@ -515,8 +543,8 @@ void moveForward()
 
 void moveCalibrate() 
 {
-    analogWrite(MOTOR_LEFT_FORWARD, 255);
-    analogWrite(MOTOR_RIGHT_FORWARD, 245);
+    analogWrite(MOTOR_LEFT_FORWARD, 230);
+    analogWrite(MOTOR_RIGHT_FORWARD, 226);
     analogWrite(MOTOR_LEFT_BACKWARD, 0);
     analogWrite(MOTOR_RIGHT_BACKWARD, 0);
     signalCalibrate();
@@ -529,6 +557,32 @@ void reverse()
     analogWrite(MOTOR_LEFT_BACKWARD, 255);
     analogWrite(MOTOR_RIGHT_BACKWARD, 245);
     signalReverse();
+}
+
+void moveInterrupt()
+{
+    rightCount = 0;
+    leftCount = 0;
+    
+    while (leftCount < 17 || rightCount < 17)
+    {
+        moveForward();
+
+        Serial.println("right count: ");
+        Serial.print(rightCount);
+        Serial.println("left count: ");
+        Serial.print(leftCount);
+    }
+}
+
+void rightInterrupt()
+{
+    leftCount = 0;
+    
+    while (leftCount < 17)
+    {
+        turnRight();
+    }
 }
 
 void startRace()
