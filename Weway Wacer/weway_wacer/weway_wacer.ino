@@ -87,31 +87,25 @@ void loop()
     
     // If there's a wall in front of the robot
     if (averageFront < 25) {
-        wait(100);
         // If there's also a wall on the right, turn left
         if (averageRight < 25) {
             left();
-            wait(100);
         }
         // If there's no wall on the right, turn right
         else {
             right();
-            wait(100);
         }
     }
     // If there's no wall in front of the robot
       else {
-        wait(100);
         // If there's a wall on the right, move forward
         if (averageRight < 25) {
             forwardCM(10);
             fixLeft();
-            wait(100);
         }
         // If there's no wall on the right, turn right
         else {
             right();
-            wait(100);
        }
 //    }
 }
@@ -178,11 +172,6 @@ void stopMotors(){
 
 void forward()
 {
-    distanceFront = measureDistance(0);
-    distanceRight = measureDistance(1);
-    averageFront = averageDistanceFront();
-    averageRight = averageDistanceRight();
-    
     analogWrite(motorLeftForward,226);
     analogWrite(motorRightForward,255);
     // Set robotState to Moving when the robot moves
@@ -242,13 +231,7 @@ void right()
 void wait(unsigned long duration) {
     stopMotors(); // Call the function to stop the motors
     unsigned long startTime = millis();
-    while(millis() - startTime < duration) {
-      distanceFront = measureDistance(0);
-      distanceRight = measureDistance(1);
-      averageFront = averageDistanceFront();
-      averageRight = averageDistanceRight();
-    // Wait for the specified duration
-    }
+    while(millis() - startTime < duration);
     robotState = Stopped;
 }
 
@@ -256,7 +239,7 @@ void fixLeft()
 {
     analogWrite(motorLeftForward, 235);
     analogWrite(motorRightForward, 235);
-    delay(10);
+    delay(5);
     // Set robotState to Moving when the robot moves
     robotState = Moving;
 }
