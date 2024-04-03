@@ -10,6 +10,7 @@
 #define OFF             0  , 0  , 0
 #define NEOPIN_INPUT    13
 #define NEO_PIXNUMBER   4
+Adafruit_NeoPixel neoPixel(NEO_PIXNUMBER, NEOPIN_INPUT, NEO_GRB + NEO_KHZ800);
 
 //Gripper
 #define gripper 7
@@ -18,9 +19,9 @@
 #define gripperPulseRepeat 10
 // TODO: swap pins to 5,6 10, 11
 //wheels
-#define motorLeftForward 11 // a2
+#define motorLeftForward 11 // b1
 #define motorLeftBackward 5 // a1
-#define motorRightForward 6 // b1
+#define motorRightForward 6 // a2
 #define motorRightBackward 10 // b2
 
 //ultrasonic
@@ -32,6 +33,10 @@
 #define NUM_MEASUREMENTS 5
 long measurementsFront[NUM_MEASUREMENTS] = {0};
 long measurementsRight[NUM_MEASUREMENTS] = {0};
+static long distanceFront; // 0 for front sensor
+static long distanceRight; // 1 for right sensor
+static long averageFront;
+static long averageRight;
 
 //rotation sensor
 #define leftWheelSensor 3
@@ -40,18 +45,16 @@ int leftRotationCount =  0;
 int rightRotationCount = 0;
 int prevLeftRotationCount = leftRotationCount;
 int prevRightRotationCount = rightRotationCount;
+
 // Declare an enum for the states
 enum RobotState {
     Moving,
     Stopped,
     BackingUp,
-    BackedUp // New state after backing up
 };
 
-RobotState robotState = Moving;
-
-// Add a new variable to count the number of backup cycles
-int backupCount = 0;
+RobotState robotState = Stopped;
+unsigned long moveStartTime = 0;
 
 //setup
 void setup(){
@@ -72,25 +75,46 @@ void setup(){
   pinMode(frontEcho,INPUT);
   pinMode(rightTrigger,OUTPUT);
   pinMode(rightEcho,INPUT);
+  lightsOff();
 }
 
 void loop()
 {
-    long distanceFront = measureDistance(0); // 0 for front sensor
-    long distanceRight = measureDistance(1); // 1 for right sensor
-    long averageFront = averageDistanceFront();
-    long averageRight = averageDistanceRight();
-    Serial.println(averageFront);
-    if (averageFront >= 25)
-    {
-      forwardCM(10);
-      fixLeft();
+    distanceFront = measureDistance(0);
+    distanceRight = measureDistance(1);
+    averageFront = averageDistanceFront();
+    averageRight = averageDistanceRight();
+    
+    // If there's a wall in front of the robot
+    if (averageFront < 25) {
+        wait(100);
+        // If there's also a wall on the right, turn left
+        if (averageRight < 25) {
+            left();
+            wait(100);
+        }
+        // If there's no wall on the right, turn right
+        else {
+            right();
+            wait(100);
+        }
     }
-    else
-    {
-      stopMotors();
-      right();
-    }
+    // If there's no wall in front of the robot
+      else {
+        wait(100);
+        // If there's a wall on the right, move forward
+        if (averageRight < 25) {
+            forwardCM(10);
+            fixLeft();
+            wait(100);
+        }
+        // If there's no wall on the right, turn right
+        else {
+            right();
+            wait(100);
+       }
+//    }
+}
 }
 
 long measureDistance(int sensor) {
@@ -108,7 +132,7 @@ long measureDistance(int sensor) {
 
     // Send a 10 microsecond pulse.
     digitalWrite(triggerPin, HIGH);
-    delay(1);
+    wait(1);
     digitalWrite(triggerPin, LOW);
 
     // Measure the time for the echo.
@@ -154,6 +178,11 @@ void stopMotors(){
 
 void forward()
 {
+    distanceFront = measureDistance(0);
+    distanceRight = measureDistance(1);
+    averageFront = averageDistanceFront();
+    averageRight = averageDistanceRight();
+    
     analogWrite(motorLeftForward,226);
     analogWrite(motorRightForward,255);
     // Set robotState to Moving when the robot moves
@@ -175,6 +204,7 @@ void forwardCM(int distance)
     }
     rightRotationCount = 0;
     leftRotationCount = 0;
+    robotState = Moving;
 }
 
 void backwards()
@@ -187,6 +217,7 @@ void backwards()
 
 void right()
 {
+    Serial.println("right");
     unsigned long startTime = millis();
     unsigned long timeout = 690;
 
@@ -199,6 +230,10 @@ void right()
 
     // Stop the motors
     stopMotors();
+    distanceFront = measureDistance(0);
+    distanceRight = measureDistance(1);
+    averageFront = averageDistanceFront();
+    averageRight = averageDistanceRight();
     wait(1000);
     // Set robotState to Moving when the robot moves
     robotState = Moving;
@@ -207,7 +242,14 @@ void right()
 void wait(unsigned long duration) {
     stopMotors(); // Call the function to stop the motors
     unsigned long startTime = millis();
-    while(millis() - startTime < duration); // Wait for the specified duration
+    while(millis() - startTime < duration) {
+      distanceFront = measureDistance(0);
+      distanceRight = measureDistance(1);
+      averageFront = averageDistanceFront();
+      averageRight = averageDistanceRight();
+    // Wait for the specified duration
+    }
+    robotState = Stopped;
 }
 
 void fixLeft()
@@ -221,6 +263,7 @@ void fixLeft()
 
 void left()
 {
+    Serial.println("left");
     unsigned long startTime = millis();
     unsigned long timeout = 690;
 
@@ -233,32 +276,40 @@ void left()
 
     // Stop the motors
     stopMotors();
+    distanceFront = measureDistance(0);
+    distanceRight = measureDistance(1);
+    averageFront = averageDistanceFront();
+    averageRight = averageDistanceRight();
     wait(1000);
     // Set robotState to Moving when the robot moves
     robotState = Moving;
 }
 
-void avoidStuck()
-{
-    if (leftRotationCount == prevLeftRotationCount && rightRotationCount == prevRightRotationCount && robotState == Moving) {
-        // If rotation count has stopped increasing and the robot is moving, make the robot back up
-        stopMotors();
-        delay(100);
-        backwards();
-        delay(300);
-        stopMotors();
-        // Set robotState to BackingUp when the robot backs up
-        robotState = BackingUp;
-        backupCount++;
-    } else if (robotState == BackingUp && backupCount > 5) { // If the robot has backed up more than 5 times
-        // Set robotState to BackedUp
-        robotState = BackedUp;
-        backupCount = 0; // Reset backup count
-    }
+bool isStuck() {
+    return (leftRotationCount == prevLeftRotationCount || rightRotationCount == prevRightRotationCount) && robotState == Moving && (millis() - moveStartTime > 1000);
+}
 
-    // Update previous rotation counts
+void backup() {
+    wait(100);
+    backwards();
+    delay(300);
+    stopMotors();
+    robotState = BackingUp;
+}
+
+void avoidStuck() {
+    if (isStuck()) {
+        backup();
+    }
     prevLeftRotationCount = leftRotationCount;
     prevRightRotationCount = rightRotationCount;
+}
+
+void lightsOff() {
+    for (int i = 0; i < NEO_PIXNUMBER; i++) {
+        neoPixel.setPixelColor(i,neoPixel.Color(OFF));
+        neoPixel.show();
+    }
 }
 
 void countLeftSensor()
