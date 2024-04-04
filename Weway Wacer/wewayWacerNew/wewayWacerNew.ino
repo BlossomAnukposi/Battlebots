@@ -53,8 +53,9 @@ Adafruit_NeoPixel neoPixel(NEO_PIXNUMBER, NEOPIN_INPUT, NEO_GRB + NEO_KHZ800);
 
 //Servomotor: Gripper
 #define gripperOpenPulse 1000
-#define gripperClosePulse 971
+#define gripperClosePulse 500
 #define gripperPulseRepeat 20
+#define gripperToggleThing 1000
 
 //Ultrasonic sensors
 #define SPEED_OF_SOUND 0.034                      // in cm/s
@@ -195,11 +196,10 @@ void loop() {
 //      }
 //    }
 
-  while(averageFront < 15 && !pickedUpObject) {
-      forward();
-      start();
+  for (int i = 0; i < 8; i++)
+  {
+     setGripper(gripperClose Pulse);
   }
-
 }
 
 //====[ FUNCTIONS ]=======================
@@ -407,9 +407,19 @@ void setServoAngle(int angle) {
 }
 
 //GRIPPER TEST FUNCTIONS
-void setGripperOpen() {
-  for(int i = 0; i < 8; i++) {
-   digitalWrite(gripper, HIGH) 
+void setGripper(int pulse) {
+  static unsigned long timer;
+  static int pulse1;
+  if(pulse > 0)
+  {
+    pulse1 = pulse;
+  }
+  if (millis() > timer)
+  {
+    digitalWrite(gripper, HIGH);
+    delayMicroseconds(pulse);
+    digitalWrite(gripper, LOW);
+    timer = millis() + gripperPulseRepeat;
   }
 }
 
