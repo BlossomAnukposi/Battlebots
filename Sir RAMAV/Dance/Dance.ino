@@ -1,3 +1,18 @@
+#include <Adafruit_NeoPixel.h>
+
+//===================== NEOPIXEL SETUP =====================//
+#define WHITE           255, 255, 255
+#define RED             0  , 255, 0
+#define GREEN           255, 0  , 0
+#define BLUE            0  , 0  , 255
+#define LIGHT_GREEN     255, 155, 0
+#define YELLOW          255, 255, 0
+#define OFF             0  , 0  , 0
+#define CALIBRATE       0  , 200, 190
+#define NEOPIN_INPUT    7
+#define NEO_PIXNUMBER   4
+
+Adafruit_NeoPixel strip_NI(NEO_PIXNUMBER, NEOPIN_INPUT, NEO_GRB + NEO_KHZ800);
 //=============== ANALOG LINE SENSORS ===============//
 #define AVERAGE 700
 #define SENSORS 8
@@ -74,6 +89,9 @@ void moveForward() {
 
 //===================== GENERIC STUFF =====================//
 void setup() {
+    // LED Signals Setup
+    strip_NI.begin();
+    
     pinMode(MOTOR_LEFT_FORWARD, OUTPUT);
     pinMode(MOTOR_RIGHT_FORWARD, OUTPUT);
     pinMode(MOTOR_LEFT_BACKWARD, OUTPUT);
@@ -89,25 +107,53 @@ void setup() {
 void loop() {
     readSensors();
 
-    if (IR[6] > AVERAGE || IR[7] > AVERAGE) {
-        Serial.println("Left Turn");
-        turnLeft();
-    } else if (IR[0] > AVERAGE || IR[1] > AVERAGE) {
-        Serial.println("Right Turn");
-        turnRight();
-    } else if (IR[3] > AVERAGE || IR[4] > AVERAGE) {
-        Serial.println("Forward");
-        moveForward();
-    } else if ((IR[2] > AVERAGE || IR[3] > AVERAGE) && IR[5] < AVERAGE) {
-        Serial.println("slightRight");
-        slightRight();
-    } else if ((IR[5] > AVERAGE || IR[4] > AVERAGE) && IR[2] < AVERAGE) {
-        Serial.println("slightLeft");
-        slightLeft();
-    } else if (IR[0] < AVERAGE && IR[1] < AVERAGE && IR[2] < AVERAGE && IR[3] < AVERAGE && IR[4] < AVERAGE && IR[5] < AVERAGE && IR[6] < AVERAGE && IR[7] < AVERAGE) {
-        Serial.println("Turn Around");
-        turnAround();
-    } else {
-        Serial.println("IDK");
+     for (int j = 0; j < NEO_PIXNUMBER; j++)
+    {
+        strip_NI.setPixelColor(j, strip_NI.Color(0, 255, 100));
     }
+    strip_NI.show();
+    turnLeft();
+    delay(200);
+    turnRight();
+    delay(200);
+         for (int j = 0; j < NEO_PIXNUMBER; j++)
+    {
+        strip_NI.setPixelColor(j, strip_NI.Color(255, 0, 100));
+    }
+    strip_NI.show(); 
+    turnLeft();
+    delay(200);
+    turnRight();
+    delay(200);
+    turnLeft();
+    delay(200);
+         for (int j = 0; j < NEO_PIXNUMBER; j++)
+    {
+        strip_NI.setPixelColor(j, strip_NI.Color(0, 255, 0));
+    }
+    strip_NI.show();
+    turnRight();
+    delay(200);
+    turnLeft();
+    delay(1500);
+    turnLeft();
+    delay(200);
+    turnRight();
+    delay(200);
+         for (int j = 0; j < NEO_PIXNUMBER; j++)
+    {
+        strip_NI.setPixelColor(j, strip_NI.Color(0, 100, 255));
+    }
+    strip_NI.show();
+    turnLeft();
+    delay(200);
+    turnRight();
+    delay(200);
+         for (int j = 0; j < NEO_PIXNUMBER; j++)
+    {
+        strip_NI.setPixelColor(j, strip_NI.Color(0, 0, 255));
+    }
+    strip_NI.show();
+    turnRight();
+    delay(1500);
 }
