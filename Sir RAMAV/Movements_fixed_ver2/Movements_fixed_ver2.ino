@@ -66,7 +66,7 @@ void signalRight()
 }
 
 //=============== ANALOG LINE SENSORS ===============//
-#define AVERAGE       700
+#define AVERAGE       600
 #define SENSORS       8
 bool    chooseLeft =  true;
 
@@ -83,19 +83,21 @@ void readSensors()
 }
 
 //===================== ROTATION SENSORS =====================//
-#define       ROTOR_RIGHT           2
-#define       ROTOR_LEFT            3
-#define       PULSES_PER_90DEG      5
+#define     ROTOR_RIGHT             2
+#define     ROTOR_LEFT              3
+#define     PULSES_PER_90DEG_LEFT   40
+#define     PULSES_PER_90DEG_RIGHT  38
+int         rightCount  =           0;
+int         leftCount   =           0;
 
-volatile int  leftCount  =          0;
-volatile int  rightCount =          0;
-
-void leftPulse() {
-  leftCount++;
+void rightPulse()
+{
+    rightCount++;
 }
 
-void rightPulse() {
-  rightCount++;
+void leftPulse()
+{
+    leftCount++;
 }
 
 //===================== MOTORS =====================//
@@ -122,32 +124,22 @@ void slightRight()
 
 void turnRight() 
 {
-    leftCount = 0;
+    analogWrite(MOTOR_LEFT_FORWARD, 255);
+    analogWrite(MOTOR_RIGHT_FORWARD, 0);
+    analogWrite(MOTOR_LEFT_BACKWARD, 0);
+    analogWrite(MOTOR_RIGHT_BACKWARD, 255);
     chooseLeft = false;
-    
-    while (leftCount < PULSES_PER_90DEG) {
-        analogWrite(MOTOR_LEFT_FORWARD, 255);
-        analogWrite(MOTOR_RIGHT_FORWARD, 0);
-        analogWrite(MOTOR_LEFT_BACKWARD, 0);
-        analogWrite(MOTOR_RIGHT_BACKWARD, 255);
-        signalLeft();
-        rightPulse();
-    }
+    signalLeft();
 }
 
 void turnLeft() 
 {
-    leftCount = 0;
+    analogWrite(MOTOR_LEFT_FORWARD, 0);
+    analogWrite(MOTOR_RIGHT_FORWARD, 255);
+    analogWrite(MOTOR_LEFT_BACKWARD, 255);
+    analogWrite(MOTOR_RIGHT_BACKWARD, 0);
     chooseLeft = true;
-    
-    while (leftCount < PULSES_PER_90DEG) {
-        analogWrite(MOTOR_LEFT_FORWARD, 0);
-        analogWrite(MOTOR_RIGHT_FORWARD, 255);
-        analogWrite(MOTOR_LEFT_BACKWARD, 255);
-        analogWrite(MOTOR_RIGHT_BACKWARD, 0);
-        signalRight();
-        leftPulse();
-    }
+    signalRight();
 }
 
 void turnAround() 
@@ -167,6 +159,7 @@ void turnAround()
         analogWrite(MOTOR_LEFT_BACKWARD, 0);
         analogWrite(MOTOR_RIGHT_BACKWARD, 255);
     }
+//    signalTurnAround();
 }
 
 void stopMotors() 
@@ -175,7 +168,6 @@ void stopMotors()
     analogWrite(MOTOR_RIGHT_FORWARD, 0);
     analogWrite(MOTOR_LEFT_BACKWARD, 0);
     analogWrite(MOTOR_RIGHT_BACKWARD, 0);
-    signalOff();
 }
 
 void adjustPath()
@@ -209,8 +201,6 @@ void setup()
     pinMode(MOTOR_RIGHT_FORWARD, OUTPUT);
     pinMode(MOTOR_LEFT_BACKWARD, OUTPUT);
     pinMode(MOTOR_RIGHT_BACKWARD, OUTPUT);
-    pinMode(ROTOR_RIGHT, INPUT);
-    pinMode(ROTOR_LEFT, INPUT);
 
     for (int i = 0; i < SENSORS; i++) 
     {
@@ -219,13 +209,14 @@ void setup()
 
     attachInterrupt(digitalPinToInterrupt(ROTOR_RIGHT), rightPulse, CHANGE);
     attachInterrupt(digitalPinToInterrupt(ROTOR_LEFT), leftPulse, CHANGE);
+    
     Serial.begin(9600);
 }
 
 void loop() {
     readSensors();
 
-    if (IR[0] > AVERAGE && IR[1] > AVERAGE && IR[6] > AVERAGE && IR[7] > AVERAGE) 
+    if ((IR[0] > AVERAGE || IR[1] > AVERAGE) && (IR[6] > AVERAGE || IR[7] > AVERAGE)) 
     {
         Serial.println("Turn Right");
         turnRight();
@@ -242,23 +233,21 @@ void loop() {
         Serial.println("Right Turn");
         turnRight();
     }
-
-    else if (IR[3] > AVERAGE || IR[4] > AVERAGE) 
-    {
-        Serial.println("Forward");
-        moveForward();
-    } 
-
+    
     else if (IR[0] < AVERAGE && IR[1] < AVERAGE && IR[2] < AVERAGE && IR[3] < AVERAGE && IR[4] < AVERAGE && IR[5] < AVERAGE && IR[6] < AVERAGE && IR[7] < AVERAGE) 
     {
         Serial.println("Turn Around");
         turnAround();
     }
-    
-    else 
+
+    else if (IR[3] > AVERAGE || IR[4] > AVERAGE) 
     {
-        Serial.println("Fuck man, IDK");
-    }
-    
+        if ((IR[0] < AVERAGE && IR[1] < AVERAGE) && (IR[6] < AVERAGE && IR[7] < AVERAGE))
+        {
+            Serial.println("Forward");
+            moveForward();
+        }
+    } 
+
     adjustPath();
 }
