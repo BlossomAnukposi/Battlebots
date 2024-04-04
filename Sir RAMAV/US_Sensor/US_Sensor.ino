@@ -41,10 +41,10 @@ int     distance;
 #define GRIPPER_PIN   11
 
 //===================== MOTORS =====================//
-#define MOTOR_LEFT_FORWARD    6 // connected to A1
-#define MOTOR_RIGHT_FORWARD   10 // connected to B2
+#define MOTOR_LEFT_FORWARD    9 // connected to A1
+#define MOTOR_RIGHT_FORWARD   6 // connected to B2
 #define MOTOR_LEFT_BACKWARD   5 // connected to A2
-#define MOTOR_RIGHT_BACKWARD  9 // connected to B1
+#define MOTOR_RIGHT_BACKWARD  10 // connected to B1
 
 //===================== GENERIC STUFF =====================//
 void setup() 

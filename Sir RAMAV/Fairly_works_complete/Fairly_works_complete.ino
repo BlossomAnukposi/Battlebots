@@ -15,9 +15,8 @@
 Adafruit_NeoPixel strip_NI(NEO_PIXNUMBER, NEOPIN_INPUT, NEO_GRB + NEO_KHZ800);
 
 //=============== ANALOG LINE SENSOR SETUP ===============//
-#define       AVERAGE           600
 #define       SENSORS           8
-bool          chooseLeft      = false;  //changed 27/03/2024 : 19:25:43 from true. ******{Debug value}******
+bool          chooseLeft      = false;
 int           S[SENSORS]      = {A0, A1, A2, A3, A4, A5, A6, A7};
 int           IR[SENSORS];
 bool          raceStarted     = false;
@@ -93,6 +92,32 @@ void setup()
     
     Serial.begin(9600);
 }
+
+//void endRace()
+//{
+//    if (IR1 > 800 && IR2 > 800 && IR3 > 800 && IR6 > 800 && IR7 > 800 && IR8 > 800) 
+//    {
+//        if (!onSquare) 
+//        {
+//            onSquare = true;
+//            squareEndTime = millis();
+//        } 
+//        
+//        else if (millis() - squareEndTime > 75) 
+//        {
+//            stopMotors();
+//            setServoAngle(130);
+//            delay(300);
+//            moveBackward();
+//            raceFinished = true;
+//        }
+//    } 
+//  
+//    else 
+//    {
+//      onSquare = false;
+//    }
+//}
 
 void loop()
 {
