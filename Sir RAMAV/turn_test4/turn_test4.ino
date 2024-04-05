@@ -88,24 +88,27 @@ void loop()
         }
     }
 
-    else //if (!raceEnded)
+    else if (!raceEnded)
     {
         readSensors();
+        
         if (IR[0] > threshold[0] && IR[1] > threshold[1] && IR[2] > threshold[2] && IR[3] > threshold[3] && IR[4] > threshold[4] && IR[5] > threshold[5] && IR[6] > threshold[6] && IR[7] > threshold[7])
-        { 
-          delay(100);
-          Serial.println("ending sequence1");
+        {
           moveForward();
           delay(500);
           stopMotors();
-          delay(500);
-          Serial.println("ending sequence2");
+          readSensors();
           if (IR[0] > threshold[0] && IR[1] > threshold[1] && IR[2] > threshold[2] && IR[3] > threshold[3] && IR[4] > threshold[4] && IR[5] > threshold[5] && IR[6] > threshold[6] && IR[7] > threshold[7])
           {
-            Serial.println("end3");
+            Serial.println("end");
             endRace();
           }
-        }
+          else
+          {
+            turnLeft();
+            delay(550);
+          }
+        } 
         else if (IR[6] > threshold[6] || IR[7] > threshold[7])
         {
             Serial.println("Left Turn");
@@ -307,7 +310,7 @@ void slightLeft()
     analogWrite(MOTOR_RIGHT_FORWARD, 250);
     analogWrite(MOTOR_LEFT_BACKWARD, 0);
     analogWrite(MOTOR_RIGHT_BACKWARD, 0);
-    delay(10);
+    delay(15);
 }
 
 void slightRight()
@@ -316,7 +319,7 @@ void slightRight()
     analogWrite(MOTOR_RIGHT_FORWARD, 255);
     analogWrite(MOTOR_LEFT_BACKWARD, 0);
     analogWrite(MOTOR_RIGHT_BACKWARD, 0);
-    delay(10);
+    delay(15);
 }
 
 void turnRight()
@@ -325,7 +328,7 @@ void turnRight()
     analogWrite(MOTOR_RIGHT_FORWARD, 0);
     analogWrite(MOTOR_LEFT_BACKWARD, 0);
     analogWrite(MOTOR_RIGHT_BACKWARD, 255);
-    delay(10);
+    delay(20);
     signalRight();
 }
 
@@ -335,7 +338,7 @@ void turnLeft()
     analogWrite(MOTOR_RIGHT_FORWARD, 255);
     analogWrite(MOTOR_LEFT_BACKWARD, 255);
     analogWrite(MOTOR_RIGHT_BACKWARD, 0);
-    delay(10);
+    delay(20);
     signalLeft();
 }
 
@@ -358,7 +361,7 @@ void stopMotors()
 void moveForward()
 {
     analogWrite(MOTOR_LEFT_FORWARD, 210);
-    analogWrite(MOTOR_RIGHT_FORWARD, 204);
+    analogWrite(MOTOR_RIGHT_FORWARD, 225);
     analogWrite(MOTOR_LEFT_BACKWARD, 0);
     analogWrite(MOTOR_RIGHT_BACKWARD, 0);
     signalForward();
