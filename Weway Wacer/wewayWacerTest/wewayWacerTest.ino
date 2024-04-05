@@ -59,13 +59,8 @@ Adafruit_NeoPixel neoPixel(NEO_PIXNUMBER, NEOPIN, NEO_GRB + NEO_KHZ800);
 
 //Ultrasonic sensors
 #define SPEED_OF_SOUND 0.034                      // in cm/s
-#define NUM_MEASUREMENTS 5                        // average of 5 readings
-long measurementsFront[NUM_MEASUREMENTS] = {0};
-long measurementsRight[NUM_MEASUREMENTS] = {0};
-static long distanceFront;                        // 0 for front sensor
-static long distanceRight;                        // 1 for right sensor
-static long averageFront;
-static long averageRight;
+static long distanceFront;                       
+static long distanceRight;                        
 
 //Rotation sensors
 int leftRotationCount =  0;
@@ -100,7 +95,6 @@ unsigned long time;
 unsigned long startTime = 0;
 bool pickedUpObject = false;
 bool raceFinished = false;
-bool testing = false;
 
 unsigned long squareStartTime = 0; // Variable to store the time when the robot first detects the square
 unsigned long squareEndTime = 0; // Variable to store the time when the robot first detects the square
@@ -170,10 +164,8 @@ void readSensors()
 
 void loop() 
 {
-  distanceFront = measureDistance(0);
-  distanceRight = measureDistance(1);
-  averageFront = averageDistanceFront();
-  averageRight = averageDistanceRight();
+  distanceFront = getDistanceFront();
+  distanceRight = getDistanceRight();
 
 //  // If there's a wall in front of the robot
 //  if (averageFront < 25) {
@@ -205,11 +197,11 @@ void loop()
 //     setGripper(gripperOpenPulse);
 //     signalCalibrate();
 //  }
-
-  while (averageFront < 15 && !pickedUpObject)
+  
+  while (getDistanceFront() < 40 && !pickedUpObject)
   {
-    Serial.println(averageFront);
-    for (int i = 0; i < 10; i++)
+    getDistanceFront();
+    for (int i = 0; i < 8; i++)
     {
       setGripper(gripperOpenPulse);
     }
@@ -237,67 +229,36 @@ void countRightSensor()
 }
 
 //Ultrasonic sensor
-long measureDistance(int sensor) 
+int getDistanceFront()
 {
-    int triggerPin, echoPin;
-    long* measurements;
-    if (sensor == 0) // 0 for front sensor
-    { 
-        triggerPin = frontTrigger;
-        echoPin = frontEcho;
-        measurements = measurementsFront;
-    } 
-    else // 1 for right sensor
-    { 
-        triggerPin = rightTrigger;
-        echoPin = rightEcho;
-        measurements = measurementsRight;
-    }
-
-    // Send a 10 microsecond pulse.
-    digitalWrite(triggerPin, HIGH);
-    wait(1);
-    digitalWrite(triggerPin, LOW);
-
-    // Measure the time for the echo.
-    long duration = pulseIn(echoPin, HIGH);
-
-    // Calculate the distance.
-    long distance = (duration * SPEED_OF_SOUND) / 2;
-
-    // Shift the old measurements and add the new one.
-    for (int i = 0; i < NUM_MEASUREMENTS - 1; i++) 
-    {
-        measurements[i] = measurements[i + 1];
-    }
-    measurements[NUM_MEASUREMENTS - 1] = distance;
-    
-    return distance;
+  digitalWrite(frontTrigger, LOW);
+  delay(2);
+  digitalWrite(frontTrigger, HIGH);
+  delay(200);
+  digitalWrite(frontTrigger, LOW);
+  duration = pulseIn(frontEcho, HIGH);
+  distanceFront = (duration * 0.034)/2;
+  Serial.print("front: ");
+  Serial.println(distanceFront);
 }
 
-long averageDistanceFront() 
+int getDistanceRight()
 {
-    long sum = 0;
-    for (int i = 0; i < NUM_MEASUREMENTS; i++) 
-    {
-        sum += measurementsFront[i];
-    }
-    return round(static_cast<float>(sum) / NUM_MEASUREMENTS);
-}
-
-long averageDistanceRight() 
-{
-    long sum = 0;
-    for (int i = 0; i < NUM_MEASUREMENTS; i++) 
-    {
-        sum += measurementsRight[i];
-    }
-    return round(static_cast<float>(sum) / NUM_MEASUREMENTS);
+  digitalWrite(rightTrigger, LOW);
+  delay(2);
+  digitalWrite(rightTrigger, HIGH);
+  delay(200);
+  digitalWrite(rightTrigger, LOW);
+  duration = pulseIn(rightEcho, HIGH);
+  distanceRight = (duration * 0.034)/2;
+  Serial.print("right: ");
+  Serial.println(distanceRight);
 }
 
 //Electromotors
 void stopMotors()
 {
+    Serial.print("stopmotors");
     analogWrite(motorLeftForward,0);
     analogWrite(motorRightForward,0);
     analogWrite(motorLeftBackward,0);
@@ -308,6 +269,7 @@ void stopMotors()
 
 void forward()
 {
+  Serial.print("forward");
     analogWrite(motorLeftForward,226);
     analogWrite(motorRightForward,255);
     // Set robotState to Moving when the robot moves
@@ -353,13 +315,11 @@ void right()
     // Keep turning until timeout
     while (millis() - startTime < timeout);
 
-    // Stop the motors
-    stopMotors();
-    distanceFront = measureDistance(0);
-    distanceRight = measureDistance(1);
-    averageFront = averageDistanceFront();
-    averageRight = averageDistanceRight();
-    wait(1000);
+//    // Stop the motors
+//    stopMotors();
+//    distanceFront = measureDistance(0);
+//    distanceRight = measureDistance(1);
+//    wait(1000);
     // Set robotState to Moving when the robot moves
     robotState = Moving;
 }
@@ -397,11 +357,11 @@ void left()
 
     // Stop the motors
     stopMotors();
-    distanceFront = measureDistance(0);
-    distanceRight = measureDistance(1);
-    averageFront = averageDistanceFront();
-    averageRight = averageDistanceRight();
-    wait(1000);
+//    distanceFront = measureDistance(0);
+//    distanceRight = measureDistance(1);
+//    averageFront = averageDistanceFront();
+//    averageRight = averageDistanceRight();
+//    wait(1000);
     // Set robotState to Moving when the robot moves
     robotState = Moving;
 }
@@ -458,6 +418,8 @@ void setGripper(int pulse)
   }
 }
 
+
+
 //Start and End functions... WIP
 void start()
 {
@@ -472,7 +434,7 @@ void start()
       else if (millis() - squareStartTime > 200) // If the robot has been on the square for more than 2 seconds
       { 
           stopMotors();
-          for (int i = 0; i < 10; i++)
+          for (int i = 0; i < 8; i++)
           {
             Serial.println("gripper close");
             setGripper(gripperClosePulse);
