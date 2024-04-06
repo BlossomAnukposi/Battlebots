@@ -163,20 +163,6 @@ void readSensors()
 
 void loop() 
 {
-//  while (getDistanceFront() < 30 && !pickedUpObject)
-//  {
-//    getDistanceFront();
-//    for (int i = 0; i < 8; i++)
-//    {
-//      setGripper(gripperOpenPulse);
-//    }
-//    if (!pickedUpObject)
-//    {
-//      forward();
-//      start();
-//      signalForward();
-//    }
-//  }
   while (!raceFinished)
   {
     if (getDistanceFront() > 30 && !pickedUpObject)
@@ -190,9 +176,17 @@ void loop()
       {
         setGripper(gripperOpenPulse);
       }
+      wait(1000); // wait 1 sec for the other robot to move out of the way
       forward();
       signalForward();
       startSequence();
+    }
+    /*  include line follow to enter the maze and exit, if there is no line it should ignore the linesensors
+     *  and focus on the ultra sonic sensor...
+     */
+    else if ()
+    {
+      // end sequence
     }
     else
     {
@@ -265,8 +259,8 @@ void stopMotors()
 
 void forward()
 {
-  analogWrite(motorLeftForward,226);
-  analogWrite(motorRightForward,255);
+  analogWrite(motorLeftForward, 226);
+  analogWrite(motorRightForward, 255);
   // Set robotState to Moving when the robot moves
   robotState = Moving;
   Serial.print("forward\n");
