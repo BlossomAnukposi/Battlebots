@@ -97,12 +97,6 @@ void loop()
             Serial.println("Left Turn");
             turnLeft();
         }
-
-        else if (IR[0] > threshold[0] && IR[2] > threshold[2] && IR[4] > threshold[4] && IR[6] > threshold[6])
-        {
-            Serial.println("Race Ended!");
-            endRace();
-        }
         
         else if (IR[0] > threshold[0] || IR[1] > threshold[1])
         {

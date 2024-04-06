@@ -15,24 +15,14 @@
 Adafruit_NeoPixel strip_NI(NEO_PIXNUMBER, NEOPIN_INPUT, NEO_GRB + NEO_KHZ800);
 
 //=========================[ SPECIAL SEQUENCES ]=========================//
-bool raceStarted  = false;
-bool raceEnded    = false;
-bool chooseLeft   = false;
-bool onSquare     = false;
-unsigned long squareEndTime;
-
-//=====================[ ROTORS SETUP ]=====================//
-#define     ROTOR_RIGHT             2
-#define     ROTOR_LEFT              3
-#define     PULSES_PER_90DEG_LEFT   40
-#define     PULSES_PER_90DEG_RIGHT  38
-int         rightCount  =           0;
-int         leftCount   =           0;
+bool raceStarted = false;
+bool raceEnded   = false;
+bool chooseLeft  = false;
 
 //===============[ ANALOG LINE SENSORS ]===============//
 #define SENSORS 8
-int S[SENSORS] = {A0, A1, A2, A3, A4, A5, A6, A7};
-int IR[SENSORS];
+int     S[SENSORS] = {A0, A1, A2, A3, A4, A5, A6, A7};
+int     IR[SENSORS];
 
 //=====================[ ULTRASONIC SENSOR SETUP ]=====================//
 #define TRIGGER_PIN   12
@@ -51,11 +41,11 @@ int     distance;
 
 //===================== CALIBRATION SETUP =====================//
 bool  calibrated =    false;
+bool  whiteSeen =     false;
+bool  blackSeen =     false;
 int   white[SENSORS];
 int   black[SENSORS];
 int   threshold[SENSORS];
-bool  whiteSeen =     false;
-bool  blackSeen =     false;
 
 //=====================[ GENERIC STUFF ]=====================//
 void setup()
@@ -79,9 +69,6 @@ void setup()
     }
 
     setServoAngle(150);
-
-    attachInterrupt(digitalPinToInterrupt(ROTOR_RIGHT), rightPulse, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(ROTOR_LEFT), leftPulse, CHANGE);
     
     Serial.begin(9600);
 }
@@ -95,62 +82,56 @@ void loop()
         distanceReader();
         Serial.println(distance);
         
-        if (distance <= 25)
+        if (distance < 25 && distance > 6)
         {
+            delay(1500);
             calibrate();
         }
     }
 
-    else if (calibrated && !raceEnded)
+    else if (!raceEnded)
     {
-        rightCount = 0;
-        leftCount = 0;
         readSensors();
-
-        if (IR[0] > threshold[0] && IR[1] > threshold[1] && IR[2] > threshold[2] && IR[5] > threshold[5] && IR[6] > threshold[6] && IR[7] > threshold[7])
-        {
-            theEnd();
-        }
         
-        else if ((IR[6] > threshold[6] || IR[7] > threshold[7]) && rightCount < PULSES_PER_90DEG_RIGHT) 
+        if (IR[0] > threshold[0] && IR[1] > threshold[1] && IR[2] > threshold[2] && IR[3] > threshold[3] && IR[4] > threshold[4] && IR[5] > threshold[5] && IR[6] > threshold[6] && IR[7] > threshold[7])
+        {
+            checkBlackBox();
+        } 
+        else if (IR[6] > threshold[6] || IR[7] > threshold[7])
         {
             Serial.println("Left Turn");
             turnLeft();
-            onSquare = false;
         }
         
-        else if ((IR[0] > threshold[0] || IR[1] > threshold[1]) && leftCount < PULSES_PER_90DEG_LEFT) 
+        else if (IR[0] > threshold[0] || IR[1] > threshold[1])
         {
             Serial.println("Right Turn");
             turnRight();
-            onSquare = false;
-        }
+        } 
         
-        else if ((IR[2] > threshold[2] || IR[3] > threshold[3]) && IR[5] < threshold[5]) 
+        else if (IR[3] > threshold[3] || IR[4] > threshold[4])
+        {
+            Serial.println("Forward");
+            moveForward();
+        } 
+        
+        else if ((IR[2] > threshold[2] || IR[3] > threshold[3]) && IR[5] < threshold[5])
         {
             Serial.println("slightRight");
             slightRight();
-            onSquare = false;
-        }
+        } 
         
         else if ((IR[5] > threshold[5] || IR[4] > threshold[4]) && IR[2] < threshold[2])
         {
             Serial.println("slightLeft");
             slightLeft();
-            onSquare = false;
-        }
-
-        else if (IR[3] > threshold[3] || IR[4] > threshold[4]) 
-        {
-            Serial.println("Forward");
-            moveForward();
-        }
+        } 
         
         else if (IR[0] < threshold[0] && IR[1] < threshold[1] && IR[2] < threshold[2] && IR[3] < threshold[3] && IR[4] < threshold[4] && IR[5] < threshold[5] && IR[6] < threshold[6] && IR[7] < threshold[7])
         {
             Serial.println("Turn Around");
             turnAround();
-        }
+        } 
         
         else
         {
@@ -310,17 +291,6 @@ void setServoAngle(int angle)
     analogWrite(GRIPPER_PIN, pulseWidth);
 }
 
-//=====================[ ROTORS SETUP ]=====================//
-void rightPulse()
-{
-    rightCount++;
-}
-
-void leftPulse()
-{
-    leftCount++;
-}
-
 //=====================[ MOTOR FUNCTIONS ]=====================//
 void slightLeft()
 {
@@ -328,7 +298,7 @@ void slightLeft()
     analogWrite(MOTOR_RIGHT_FORWARD, 250);
     analogWrite(MOTOR_LEFT_BACKWARD, 0);
     analogWrite(MOTOR_RIGHT_BACKWARD, 0);
-    delay(10);
+    delay(15);
 }
 
 void slightRight()
@@ -337,7 +307,7 @@ void slightRight()
     analogWrite(MOTOR_RIGHT_FORWARD, 255);
     analogWrite(MOTOR_LEFT_BACKWARD, 0);
     analogWrite(MOTOR_RIGHT_BACKWARD, 0);
-    delay(10);
+    delay(15);
 }
 
 void turnRight()
@@ -346,7 +316,7 @@ void turnRight()
     analogWrite(MOTOR_RIGHT_FORWARD, 0);
     analogWrite(MOTOR_LEFT_BACKWARD, 0);
     analogWrite(MOTOR_RIGHT_BACKWARD, 255);
-//    delay(10);
+    delay(20);
     signalRight();
 }
 
@@ -356,27 +326,16 @@ void turnLeft()
     analogWrite(MOTOR_RIGHT_FORWARD, 255);
     analogWrite(MOTOR_LEFT_BACKWARD, 255);
     analogWrite(MOTOR_RIGHT_BACKWARD, 0);
-//    delay(10);
+    delay(20);
     signalLeft();
 }
 
 void turnAround()
 {
-    if (!chooseLeft)
-    {
-        analogWrite(MOTOR_LEFT_FORWARD, 255);
-        analogWrite(MOTOR_RIGHT_FORWARD, 0);
-        analogWrite(MOTOR_LEFT_BACKWARD, 0);
-        analogWrite(MOTOR_RIGHT_BACKWARD, 255);
-    }
-
-    else
-    {
-        analogWrite(MOTOR_LEFT_FORWARD, 0);
-        analogWrite(MOTOR_RIGHT_FORWARD, 255);
-        analogWrite(MOTOR_LEFT_BACKWARD, 255);
-        analogWrite(MOTOR_RIGHT_BACKWARD, 0);
-    }
+    analogWrite(MOTOR_LEFT_FORWARD, 255);
+    analogWrite(MOTOR_RIGHT_FORWARD, 0);
+    analogWrite(MOTOR_LEFT_BACKWARD, 0);
+    analogWrite(MOTOR_RIGHT_BACKWARD, 255);
 }
 
 void stopMotors()
@@ -390,7 +349,7 @@ void stopMotors()
 void moveForward()
 {
     analogWrite(MOTOR_LEFT_FORWARD, 210);
-    analogWrite(MOTOR_RIGHT_FORWARD, 204);
+    analogWrite(MOTOR_RIGHT_FORWARD, 225);
     analogWrite(MOTOR_LEFT_BACKWARD, 0);
     analogWrite(MOTOR_RIGHT_BACKWARD, 0);
     signalForward();
@@ -431,27 +390,32 @@ void endRace()
 {
     reverse();
     delay(300);
+    stopMotors();
+    delay(200);
     setServoAngle(150);
     reverse();
-    delay(1500);
-    stopMotors();
+    delay(600);
     signalStop();
     delay(500);
     raceEnded = true;
 }
 
-void theEnd()
+void checkBlackBox();
 {
     moveForward();
+    delay(500);
+    stopMotors();
+    readSensors();
     
-    if (!onSquare)
+    if ((IR[0] > threshold[0] || IR[1] > threshold[1]) && (IR[2] > threshold[2] || IR[3] > threshold[3]) && (IR[4] > threshold[4] || IR[5] > threshold[5]) && (IR[6] > threshold[6] || IR[7] > threshold[7]))
     {
-        onSquare = true;
-        squareEndTime = millis();
-    }
-    
-    else if (millis() - squareEndTime > 75)
-    {
+        Serial.println("end");
         endRace();
+    }
+
+    else
+    {
+        turnLeft();
+        delay(550);
     }
 }
