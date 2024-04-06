@@ -68,17 +68,19 @@ int rightRotationCount = 0;
 int prevLeftRotationCount = leftRotationCount;
 int prevRightRotationCount = rightRotationCount;
 
-// Declare an enum for the states
+// Declare states
 enum RobotState {
     Moving,
     Stopped,
     BackingUp,
 };
 
-RobotState robotState = Stopped;
-unsigned long moveStartTime = 0;
-
 //Line sensors
+#define lineHigh 800
+#define lineAverage 600
+#define lineLow 500
+#define IRSENSORS 8
+
 int IR1;
 int IR2;
 int IR3;
@@ -87,6 +89,10 @@ int IR5;
 int IR6;
 int IR7;
 int IR8;
+
+//Additonal variables for LineFollow team functions
+RobotState robotState = Stopped;
+unsigned long moveStartTime = 0;
 
 float distance, duration; // declared 2 floats in 1 line for organization purposes;
 unsigned long time;
@@ -137,14 +143,14 @@ void setup()
 
 //Line sensor
 void setupIRSensors(){
- pinMode(A0, INPUT);
- pinMode(A1, INPUT);
- pinMode(A2, INPUT);
- pinMode(A3, INPUT);
- pinMode(A4, INPUT);
- pinMode(A5, INPUT);
- pinMode(A6, INPUT);
- pinMode(A7, INPUT);
+   pinMode(A0, INPUT);
+   pinMode(A1, INPUT);
+   pinMode(A2, INPUT);
+   pinMode(A3, INPUT);
+   pinMode(A4, INPUT);
+   pinMode(A5, INPUT);
+   pinMode(A6, INPUT);
+   pinMode(A7, INPUT);
 }
 
 void readSensors()
@@ -183,14 +189,20 @@ void loop()
     }
     /*  include line follow to enter the maze and exit, if there is no line it should ignore the linesensors
      *  and focus on the ultra sonic sensor...
+     *  move all the light signls inside their respective movement fucntions
+     *  have the robot wait before turning
      */
-    else if ()
+    else if () //line follow logic
     {
-      // end sequence
+      
     }
-    else
+    else if () //end sequence
     {
-      // maze logic
+      
+    }
+    else //maze logic
+    {
+      
     }
   }
 }
@@ -264,6 +276,16 @@ void forward()
   // Set robotState to Moving when the robot moves
   robotState = Moving;
   Serial.print("forward\n");
+}
+
+void sutterStep()
+{
+  analogWrite(motorLeftForward, 226);
+  analogWrite(motorRightForward, 255);
+  // Set robotState to Moving when the robot moves
+  robotState = Moving;
+  Serial.print("stutter\n");
+  wait(500);  
 }
 
 void forwardCM(int distance)
