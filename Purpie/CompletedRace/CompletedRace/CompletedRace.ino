@@ -3,7 +3,6 @@
 
 //===================== VARIABLES =====================//
 // NeoPixels
-#define NEOPIN_NO                  7
 #define NEOPIN_NI                  8
 #define NEOPIXEL_BRIGHTNESS_LEVEL 25
 #define NUM_NEOPIXELS              4 
