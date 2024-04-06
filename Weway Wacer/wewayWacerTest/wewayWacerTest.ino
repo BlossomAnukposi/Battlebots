@@ -88,8 +88,7 @@ int IR6;
 int IR7;
 int IR8;
 
-float distance, duration; // declared 2 floats in 1 line for organization purposes
-const int echoInterval = 245;
+float distance, duration; // declared 2 floats in 1 line for organization purposes;
 unsigned long time;
 
 unsigned long startTime = 0;
@@ -164,55 +163,42 @@ void readSensors()
 
 void loop() 
 {
-  distanceFront = getDistanceFront();
-  distanceRight = getDistanceRight();
-
-//  // If there's a wall in front of the robot
-//  if (averageFront < 25) {
-//      // If there's also a wall on the right, turn left
-//      if (averageRight < 25) {
-//          left();
-//      }
-//      // If there's no wall on the right, turn right
-//      else {
-//          right();
-//      }
-//  }
-//  // If there's no wall in front of the robot
-//    else {
-//      // If there's a wall on the right, move forward
-//      if (averageRight < 25) {
-//          forwardCM(10);
-//          fixLeft();
-//      }
-//      // If there's no wall on the right, turn right
-//      else {
-//          right();
-//      }
-//    }
-
-////gripper value test
-//  for (int i = 0; i < 8; i++)
+//  while (getDistanceFront() < 30 && !pickedUpObject)
 //  {
-//     setGripper(gripperOpenPulse);
-//     signalCalibrate();
+//    getDistanceFront();
+//    for (int i = 0; i < 8; i++)
+//    {
+//      setGripper(gripperOpenPulse);
+//    }
+//    if (!pickedUpObject)
+//    {
+//      forward();
+//      start();
+//      signalForward();
+//    }
 //  }
-  
-  while (getDistanceFront() < 40 && !pickedUpObject)
+  while (!raceFinished)
   {
-    getDistanceFront();
-    for (int i = 0; i < 8; i++)
+    if (getDistanceFront() > 30 && !pickedUpObject)
     {
-      setGripper(gripperOpenPulse);
+      stopMotors();
+      signalStop();
     }
-    if (!pickedUpObject)
+    else if (getDistanceFront() < 30 && !pickedUpObject)
     {
+      for (int i = 0; i < 8; i++)
+      {
+        setGripper(gripperOpenPulse);
+      }
       forward();
-      start();
       signalForward();
+      startSequence();
+    }
+    else
+    {
+      // maze logic
     }
   }
-
 }
 
 //====[ FUNCTIONS ]=======================
@@ -233,47 +219,57 @@ int getDistanceFront()
 {
   digitalWrite(frontTrigger, LOW);
   delay(2);
+  
   digitalWrite(frontTrigger, HIGH);
   delay(200);
+  
   digitalWrite(frontTrigger, LOW);
   duration = pulseIn(frontEcho, HIGH);
   distanceFront = (duration * 0.034)/2;
+  
   Serial.print("front: ");
   Serial.println(distanceFront);
+
+  return distanceFront;
 }
 
 int getDistanceRight()
 {
   digitalWrite(rightTrigger, LOW);
   delay(2);
+  
   digitalWrite(rightTrigger, HIGH);
   delay(200);
+  
   digitalWrite(rightTrigger, LOW);
   duration = pulseIn(rightEcho, HIGH);
   distanceRight = (duration * 0.034)/2;
+  
   Serial.print("right: ");
   Serial.println(distanceRight);
+
+  return distanceRight;
 }
 
 //Electromotors
 void stopMotors()
 {
-    Serial.print("stopmotors");
-    analogWrite(motorLeftForward,0);
-    analogWrite(motorRightForward,0);
-    analogWrite(motorLeftBackward,0);
-    analogWrite(motorRightBackward,0);
-    // Set robotState to Stopped when stopMotors is called
-    robotState = Stopped;
+  analogWrite(motorLeftForward,0);
+  analogWrite(motorRightForward,0);
+  analogWrite(motorLeftBackward,0);
+  analogWrite(motorRightBackward,0);
+  // Set robotState to Stopped when stopMotors is called
+  robotState = Stopped;
+  Serial.print("stopmotors\n");
 }
 
 void forward()
 {
-  Serial.print("forward");
-    analogWrite(motorLeftForward,226);
-    analogWrite(motorRightForward,255);
-    // Set robotState to Moving when the robot moves
-    robotState = Moving;
+  analogWrite(motorLeftForward,226);
+  analogWrite(motorRightForward,255);
+  // Set robotState to Moving when the robot moves
+  robotState = Moving;
+  Serial.print("forward\n");
 }
 
 void forwardCM(int distance)
@@ -284,7 +280,7 @@ void forwardCM(int distance)
     while ((rightRotationCount < distance*2) && (leftRotationCount < distance*2))
     {
         if (millis() - startTime > timeout) {
-            Serial.println("Timeout reached, stopping motors");
+            Serial.println("Timeout reached, stopping motors\n");
             break;
         }
         forward();
@@ -315,11 +311,9 @@ void right()
     // Keep turning until timeout
     while (millis() - startTime < timeout);
 
-//    // Stop the motors
-//    stopMotors();
-//    distanceFront = measureDistance(0);
-//    distanceRight = measureDistance(1);
-//    wait(1000);
+    // Stop the motors
+    stopMotors();
+    wait(1000);
     // Set robotState to Moving when the robot moves
     robotState = Moving;
 }
@@ -357,11 +351,7 @@ void left()
 
     // Stop the motors
     stopMotors();
-//    distanceFront = measureDistance(0);
-//    distanceRight = measureDistance(1);
-//    averageFront = averageDistanceFront();
-//    averageRight = averageDistanceRight();
-//    wait(1000);
+    wait(1000);
     // Set robotState to Moving when the robot moves
     robotState = Moving;
 }
@@ -394,13 +384,6 @@ void avoidStuck()
 }
 
 //Gripper
-//void setServoAngle(int angle) 
-//{
-//    int pulseWidth = map(angle, 0, 180, 0, 255); 
-//    analogWrite(gripper, pulseWidth);
-//}
-
-//GRIPPER TEST FUNCTIONS
 void setGripper(int pulse) 
 {
   static unsigned long timer;
@@ -419,15 +402,14 @@ void setGripper(int pulse)
 }
 
 
-
 //Start and End functions... WIP
-void start()
+void startSequence()
 {
   readSensors();
   if (IR1 > 800 && IR2 > 800 && IR3 > 800 && IR6 > 800 && IR7 > 800 && IR8 > 800) 
   {
-      if (!onSquareStart) 
-      { // If the robot just entered the square
+      if (!onSquareStart) // If the robot just entered the square
+      { 
         onSquareStart = true; // Set the flag to true
         squareStartTime = millis(); // Record the start time
       } 
@@ -436,23 +418,21 @@ void start()
           stopMotors();
           for (int i = 0; i < 8; i++)
           {
-            Serial.println("gripper close");
+            Serial.println("gripperClose\n");
             setGripper(gripperClosePulse);
           }
-          wait(800); // Wait for 1 second
-          // Make a left turn
-          left();
+          wait(1000); // Wait for 1 second
+          left(); // Make a left turn
           pickedUpObject = true; // Set the flag to indicate object picked up
       }
   } 
   else 
   {
-    // If the robot is not on the square, reset the flag
-    onSquareStart = false;
+    onSquareStart = false; // If the robot is not on the square, reset the flag
   }
 }
 
-void endRace()
+void endSequence()
 {
   readSensors();
   if (IR1 > 800 && IR2 > 800 && IR3 > 800 && IR6 > 800 && IR7 > 800 && IR8 > 800) 
@@ -465,20 +445,19 @@ void endRace()
     else if (millis() - squareEndTime > 75) // If the robot has been on the square for more than 2 seconds
     { 
       stopMotors();
-      // Drop the object
-      for (int i = 0; i < 8; i++) // Assuming this is how you open the grip to drop the object
+      for (int i = 0; i < 8; i++)
       {
+        Serial.print("gripperOpen\n");
         setGripper(gripperOpenPulse);
       } 
-      wait(300); // Wait for 1 second to ensure the grip opens fully
+      wait(1000); // Wait for 1 second 
       backup(); // Move backward after dropping the object
       raceFinished = true; // Set the raceFinished flag to true
     }
   } 
   else 
   {
-    // If the robot is not on the square, reset the flag
-    onSquare = false;
+    onSquare = false; // If the robot is not on the square, reset the flag
   }
 }
 
