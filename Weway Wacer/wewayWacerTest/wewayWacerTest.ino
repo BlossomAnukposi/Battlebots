@@ -76,10 +76,10 @@ enum RobotState {
 };
 
 //Line sensors
-#define lineHigh 800
-#define lineAverage 600
-#define lineLow 500
-#define IRSENSORS 8
+#define IR_THRESHOLD_HIGH     800
+#define IR_THRESHOLD_AVERAGE  600
+#define IR_THRESHOLD_LOW      500
+#define IRSENSORS             8
 
 int IR1;
 int IR2;
@@ -106,6 +106,8 @@ unsigned long squareEndTime = 0; // Variable to store the time when the robot fi
 bool onSquare = false; // Flag to track whether the robot is on the square
 bool onSquareStart = false; // Flag to track whether the robot is on the square
 
+bool insideMaze = false; //Flag to help with the linefollow
+
 //====[ SETUP ]===========================
 
 void setup()
@@ -124,8 +126,8 @@ void setup()
   //Rotation sensors
   pinMode(leftWheelSensor,INPUT);
   pinMode(rightWheelSensor,INPUT);
-  attachInterrupt(digitalPinToInterrupt(3),countLeftSensor,CHANGE);
-  attachInterrupt(digitalPinToInterrupt(2),countRightSensor,CHANGE);
+  attachInterrupt(digitalPinToInterrupt(3),countLeftSensor, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(2),countRightSensor, CHANGE);
   
   //Ultrasonic sensors
   pinMode(frontTrigger,OUTPUT);
@@ -174,9 +176,8 @@ void loop()
     if (getDistanceFront() > 30 && !pickedUpObject)
     {
       stopMotors();
-      signalStop();
     }
-    else if (getDistanceFront() < 30 && !pickedUpObject)
+    else if (getDistanceFront() < 30 && !pickedUpObject) //start sequence
     {
       for (int i = 0; i < 8; i++)
       {
@@ -184,30 +185,56 @@ void loop()
       }
       wait(1000); // wait 1 sec for the other robot to move out of the way
       forward();
-      signalForward();
       startSequence();
+      if (!insideMaze)
+      {
+        isInsideMaze();
+        followLine();
+      }
     }
-    /*  include line follow to enter the maze and exit, if there is no line it should ignore the linesensors
-     *  and focus on the ultra sonic sensor...
-     *  move all the light signls inside their respective movement fucntions
-     *  have the robot wait before turning
-     */
-    else if () //line follow logic
+    else if (pickedUpObject == true && !insideMaze) //end sequence
     {
-      
-    }
-    else if () //end sequence
-    {
-      
+     followLine();
+     endSequence(); 
     }
     else //maze logic
     {
-      
+      if (getDistanceRight > 30)
+      {
+        wait(500);
+        right();
+      }
+      else if (getDistanceFront < 15 && getDistanceRight < 15)
+      {
+        wait(500);
+        left();
+        if (getDistanceFront < 30)
+        {
+          left();
+        }
+      }
+      else if (isStuck())
+      {
+        backup();
+        wait(500);
+      }
+      else
+      {
+        driveStraight();
+      }
     }
   }
 }
 
 //====[ FUNCTIONS ]=======================
+
+void wait(unsigned long duration) 
+{
+  stopMotors(); // Call the function to stop the motors
+  unsigned long startTime = millis();
+  while (millis() - startTime < duration);
+  robotState = Stopped;
+}
 
 //Rotation sensor
 void countLeftSensor() 
@@ -266,6 +293,7 @@ void stopMotors()
   analogWrite(motorRightBackward,0);
   // Set robotState to Stopped when stopMotors is called
   robotState = Stopped;
+  signalStop();
   Serial.print("stopmotors\n");
 }
 
@@ -275,7 +303,17 @@ void forward()
   analogWrite(motorRightForward, 255);
   // Set robotState to Moving when the robot moves
   robotState = Moving;
+  signalForward();
   Serial.print("forward\n");
+}
+
+void slowForward()
+{
+  analogWrite(motorLeftForward, 220);
+  analogWrite(motorRightForward, 245);
+  robotState = Moving;
+  signalForward();
+  Serial.print("slowForward\n");
 }
 
 void sutterStep()
@@ -284,119 +322,143 @@ void sutterStep()
   analogWrite(motorRightForward, 255);
   // Set robotState to Moving when the robot moves
   robotState = Moving;
+  signalForward();
   Serial.print("stutter\n");
   wait(500);  
 }
 
 void forwardCM(int distance)
 {
-    unsigned long startTime = millis();
-    unsigned long timeout = distance * 10; 
+  unsigned long startTime = millis();
+  unsigned long timeout = distance * 10; 
 
-    while ((rightRotationCount < distance*2) && (leftRotationCount < distance*2))
-    {
-        if (millis() - startTime > timeout) {
-            Serial.println("Timeout reached, stopping motors\n");
-            break;
-        }
-        forward();
-    }
-    rightRotationCount = 0;
-    leftRotationCount = 0;
-    robotState = Moving;
+  while ((rightRotationCount < distance*2) && (leftRotationCount < distance*2))
+  {
+      if (millis() - startTime > timeout) {
+          Serial.println("Timeout reached, stopping motors\n");
+          break;
+      }
+      forward();
+  }
+  rightRotationCount = 0;
+  leftRotationCount = 0;
+  robotState = Moving;
+  signalForward();
+  Serial.print("forwardCM\n");
 }
 
-void backwards()
+void backward()
 {
-    analogWrite(motorLeftBackward, 237);
-    analogWrite(motorRightBackward, 255);
-    // Set robotState to Moving when the robot moves
-    robotState = Moving;
+  analogWrite(motorLeftBackward, 237);
+  analogWrite(motorRightBackward, 255);
+  
+  // Set robotState to Moving when the robot moves
+  robotState = Moving;
+  signalReverse();
+  Serial.print("backward");
 }
 
 void right()
 {
-    Serial.println("right");
-    unsigned long startTime = millis();
-    unsigned long timeout = 690;
+  unsigned long startTime = millis();
+  unsigned long timeout = 690;
 
-    // Start turning right
-    analogWrite(motorLeftBackward, 189);
-    analogWrite(motorRightForward, 204);
+  // Start turning right
+  analogWrite(motorLeftBackward, 189);
+  analogWrite(motorRightForward, 204);
 
-    // Keep turning until timeout
-    while (millis() - startTime < timeout);
+  // Keep turning until timeout
+  while (millis() - startTime < timeout);
 
-    // Stop the motors
-    stopMotors();
-    wait(1000);
-    // Set robotState to Moving when the robot moves
-    robotState = Moving;
+  // Stop the motors
+  stopMotors();
+  wait(1000);
+  // Set robotState to Moving when the robot moves
+  robotState = Moving;
+  signalRight();
+  Serial.println("right\n");
 }
 
-void wait(unsigned long duration) 
+void fixRight()
 {
-    stopMotors(); // Call the function to stop the motors
-    unsigned long startTime = millis();
-    while (millis() - startTime < duration);
-    robotState = Stopped;
-}
-
-//Should have a fix right?
-void fixLeft()
-{
-    analogWrite(motorLeftForward, 235);
-    analogWrite(motorRightForward, 235);
-    delay(5);
-    // Set robotState to Moving when the robot moves
-    robotState = Moving;
+  analogWrite(motorLeftForward, 200);
+  analogWrite(motorRightForward, 250);
+  robotState = Moving;
+  signalRight();
+  Serial.print("fixRight\n");
 }
 
 void left()
 {
-    Serial.println("left");
-    unsigned long startTime = millis();
-    unsigned long timeout = 690;
+  unsigned long startTime = millis();
+  unsigned long timeout = 690;
 
-    // Start turning left
-    analogWrite(motorLeftForward, 189);
-    analogWrite(motorRightBackward, 204);
+  // Start turning left
+  analogWrite(motorLeftForward, 189);
+  analogWrite(motorRightBackward, 204);
 
-    // Keep turning until timeout
-    while(millis() - startTime < timeout);
+  // Keep turning until timeout
+  while(millis() - startTime < timeout);
 
-    // Stop the motors
-    stopMotors();
-    wait(1000);
-    // Set robotState to Moving when the robot moves
-    robotState = Moving;
+  // Stop the motors
+  stopMotors();
+  wait(1000);
+  // Set robotState to Moving when the robot moves
+  robotState = Moving;
+  signalLeft();
+  Serial.print("left\n");
 }
 
-bool isStuck() 
+void fixLeft()
 {
-    return (leftRotationCount == prevLeftRotationCount 
-    || rightRotationCount == prevRightRotationCount) 
-    && robotState == Moving 
-    && (millis() - moveStartTime > 1000);
+  analogWrite(motorLeftForward, 235);
+  analogWrite(motorRightForward, 235);
+  delay(5);
+  // Set robotState to Moving when the robot moves
+  robotState = Moving;
+  signalLeft();
+  Serial.print("fixLeft\n");
 }
 
 void backup() 
 {
-    wait(100);
-    backwards();
-    delay(300);
-    stopMotors();
-    robotState = BackingUp;
+  backward();
+  robotState = BackingUp;
+  signalReverse();
+}
+
+bool isStuck() 
+{
+  return (leftRotationCount == prevLeftRotationCount 
+  || rightRotationCount == prevRightRotationCount) 
+  && robotState == Moving 
+  && (millis() - moveStartTime > 1000);
 }
 
 void avoidStuck() 
 {
-    if (isStuck()) 
-    {
-        backup();
-    }
-    prevLeftRotationCount = leftRotationCount;
-    prevRightRotationCount = rightRotationCount;
+  if (isStuck()) 
+  {
+      backup();
+  }
+  prevLeftRotationCount = leftRotationCount;
+  prevRightRotationCount = rightRotationCount;
+}
+
+void driveStraight()
+{
+  if (getDistanceRight() > 5)
+  {
+    fixRight();
+  }
+  else if (getDistanceRight < 5)
+  {
+    fixLeft();
+  }
+  else
+  {
+    forward();
+  }
 }
 
 //Gripper
@@ -418,11 +480,12 @@ void setGripper(int pulse)
 }
 
 
-//Start and End functions... WIP
+//Start and end sequences
 void startSequence()
 {
   readSensors();
-  if (IR1 > 800 && IR2 > 800 && IR3 > 800 && IR6 > 800 && IR7 > 800 && IR8 > 800) 
+  if (IR1 > IR_THRESHOLD_HIGH && IR2 > IR_THRESHOLD_HIGH && IR3 > IR_THRESHOLD_HIGH && 
+      IR6 > IR_THRESHOLD_HIGH && IR7 > IR_THRESHOLD_HIGH && IR8 > IR_THRESHOLD_HIGH) 
   {
       if (!onSquareStart) // If the robot just entered the square
       { 
@@ -434,8 +497,8 @@ void startSequence()
           stopMotors();
           for (int i = 0; i < 8; i++)
           {
-            Serial.println("gripperClose\n");
             setGripper(gripperClosePulse);
+            Serial.println("gripperClose\n");
           }
           wait(1000); // Wait for 1 second
           left(); // Make a left turn
@@ -451,7 +514,8 @@ void startSequence()
 void endSequence()
 {
   readSensors();
-  if (IR1 > 800 && IR2 > 800 && IR3 > 800 && IR6 > 800 && IR7 > 800 && IR8 > 800) 
+  if (IR1 > IR_THRESHOLD_HIGH && IR2 > IR_THRESHOLD_HIGH && IR3 > IR_THRESHOLD_HIGH && 
+      IR6 > IR_THRESHOLD_HIGH && IR7 > IR_THRESHOLD_HIGH && IR8 > IR_THRESHOLD_HIGH) 
   {
     if (!onSquare) // If the robot just entered the square
     { 
@@ -463,8 +527,8 @@ void endSequence()
       stopMotors();
       for (int i = 0; i < 8; i++)
       {
-        Serial.print("gripperOpen\n");
         setGripper(gripperOpenPulse);
+        Serial.print("gripperOpen\n");
       } 
       wait(1000); // Wait for 1 second 
       backup(); // Move backward after dropping the object
@@ -477,14 +541,55 @@ void endSequence()
   }
 }
 
+//Line follow
+void isInsideMaze()
+{
+  readSensors();
+  if (IR1 < IR_THRESHOLD_HIGH && IR2 < IR_THRESHOLD_HIGH && IR3 < IR_THRESHOLD_HIGH && IR4 < IR_THRESHOLD_HIGH &&
+      IR5 < IR_THRESHOLD_HIGH && IR6 < IR_THRESHOLD_HIGH && IR7 < IR_THRESHOLD_HIGH && IR8 < IR_THRESHOLD_HIGH)
+  {
+    insideMaze = true;
+    Serial.print("insideMaze");
+  }
+}
+
+void followLine()
+{
+  readSensors();
+  if (IR3 > IR_THRESHOLD_AVERAGE && IR4 > IR_THRESHOLD_AVERAGE)
+  {
+    fixLeft();
+  }
+  else if (IR5 > IR_THRESHOLD_AVERAGE && IR6 > IR_THRESHOLD_AVERAGE)
+  {
+    fixRight();
+  }
+  else if (IR2 > IR_THRESHOLD_AVERAGE && IR3 > IR_THRESHOLD_AVERAGE)
+  {
+    fixLeft();
+  }
+  else if (IR6 > IR_THRESHOLD_AVERAGE && IR7 > IR_THRESHOLD_AVERAGE)
+  {
+    fixRight();
+  }
+  else if (IR2 > IR_THRESHOLD_AVERAGE && IR1 > IR_THRESHOLD_AVERAGE)
+  {
+    fixLeft();
+  }
+  else if (IR7 > IR_THRESHOLD_AVERAGE && IR8 > IR_THRESHOLD_AVERAGE)
+  {
+    fixRight();
+  }
+}
+
 //Neopixles
 void lightsOff() 
 {
-    for (int i = 0; i < NEO_PIXNUMBER; i++) 
-    {
-        neoPixel.setPixelColor(i,neoPixel.Color(OFF));
-    }
-    neoPixel.show();
+  for (int i = 0; i < NEO_PIXNUMBER; i++) 
+  {
+      neoPixel.setPixelColor(i,neoPixel.Color(OFF));
+  }
+  neoPixel.show();
 }
 
 void signalStarting()
