@@ -43,6 +43,7 @@ int     distance;
 bool  calibrated =    false;
 bool  whiteSeen =     false;
 bool  blackSeen =     false;
+int   endThreshold =  600;
 int   white[SENSORS];
 int   black[SENSORS];
 int   threshold[SENSORS];
@@ -68,7 +69,7 @@ void setup()
         black[i] = 0;
     }
 
-    setServoAngle(150);
+    setServoAngle(170);
     
     Serial.begin(9600);
 }
@@ -93,7 +94,7 @@ void loop()
     {
         readSensors();
         
-        if (IR[0] > threshold[0] && IR[1] > threshold[1] && IR[2] > threshold[2] && IR[3] > threshold[3] && IR[4] > threshold[4] && IR[5] > threshold[5] && IR[6] > threshold[6] && IR[7] > threshold[7])
+        if ((IR[0] > endThreshold || IR[1] > endThreshold) && (IR[2] > endThreshold || IR[3] > endThreshold) && (IR[4] > endThreshold || IR[5] > endThreshold) && (IR[6] > endThreshold || IR[7] > endThreshold))
         {
             checkBlackBox();
         } 
@@ -386,7 +387,7 @@ void signalStop()
     strip_NI.show();
 }
 
-void signalLeft()
+void signalRight()
 {
     strip_NI.begin();
     for (int j = 0; j < NEO_PIXNUMBER; j++)
@@ -397,7 +398,7 @@ void signalLeft()
     strip_NI.show();
 }
 
-void signalRight()
+void signalLeft()
 {
     strip_NI.begin();
     for (int j = 0; j < NEO_PIXNUMBER; j++)
@@ -486,7 +487,7 @@ void reverse()
     analogWrite(MOTOR_LEFT_FORWARD, 0);
     analogWrite(MOTOR_RIGHT_FORWARD, 0);
     analogWrite(MOTOR_LEFT_BACKWARD, 255);
-    analogWrite(MOTOR_RIGHT_BACKWARD, 245);
+    analogWrite(MOTOR_RIGHT_BACKWARD, 250);
     signalReverse();
 }
 
@@ -494,7 +495,7 @@ void reverse()
 void startRace()
 {
     moveForward();
-    delay(600);
+    delay(680);
     setServoAngle(100);
     turnLeft();
     delay(350);
@@ -506,14 +507,16 @@ void startRace()
 void endRace()
 {
     reverse();
-    delay(300);
+    delay(560);
     stopMotors();
     delay(200);
-    setServoAngle(150);
+    setServoAngle(170);
     reverse();
-    delay(600);
+    delay(800);
     signalStop();
     delay(500);
+    stopMotors();
+    signalOff();
     raceEnded = true;
 }
 
@@ -524,7 +527,7 @@ void checkBlackBox()
     stopMotors();
     readSensors();
     
-    if ((IR[0] > threshold[0] || IR[1] > threshold[1]) && (IR[2] > threshold[2] || IR[3] > threshold[3]) && (IR[4] > threshold[4] || IR[5] > threshold[5]) && (IR[6] > threshold[6] || IR[7] > threshold[7]))
+    if ((IR[0] > endThreshold || IR[1] > endThreshold) && (IR[2] > endThreshold || IR[3] > endThreshold) && (IR[4] > endThreshold || IR[5] > endThreshold) && (IR[6] > endThreshold || IR[7] > endThreshold))
     {
         Serial.println("end");
         endRace();
