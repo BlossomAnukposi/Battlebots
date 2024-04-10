@@ -1,0 +1,76 @@
+~~ OUTDATED ~~
+
+
+
+bojects on the line
+black square for the relay
+
+brake lights
+turn signals
+moving forwards / backwords
+
+"spectacular as possible"
+
+
+extra board for 8 pints total but 6 
+
+
+start will be with a flag 
+after that will be based on the relay token
+
+
+// NAMES
+	- 
+
+// TO TEST
+	- use the ultrasonic sensor to detect wall distance to determin speed
+
+
+// ULTRA SONIC SENSOR
+	- remember to check distance after every turn
+
+// WHEELS
+	- TURNING: radius, wheel spin 
+
+// GRIPPERS
+	- Ensure the open state is not touching the metal chassis
+	- Ensure the closed state is not over exerting the current 
+
+
+## Portfolio
+
+- Project_BattleBot_[group name]_INT_D
+	- Frontpage:
+	- Foreword
+	- Table of contents:
+		- 1 chapters per challenge (3)
+
+	- assignments can be done in a seperate file with references in the main file
+
+	- "blog", record videos about the bots progress... upload on to youtube...
+		- 
+
+
+## Notes: second week
+	- do not hardcode any value
+	- use motor sensors to help deal with being stuck agains a wall
+	- use arrays for the line sensor (int) 
+	- calibarate the line sensors from the parking spot
+	- hysteresis
+	- 
+
+// TESTING NOTES
+OwO Weway Wacer UwU - Logbook
+
+## Week 1 (2024/02/05)
+	- Completed assigned exericises
+
+## Week 2 (2024/02/12)
+	- Motors
+		- A1/A2 = left wheel
+		- B1/B2 = right wheel
+## Week 4 (2024/03/04)
+	- Servo neck
+		- default positiion of 0 = right
+
+
